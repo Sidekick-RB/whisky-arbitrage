@@ -1,4 +1,5 @@
-﻿from flask import Flask, jsonify
+﻿import os
+from flask import Flask, jsonify
 from scraper import get_live_twe_data
 from agents import get_clean_search_term
 from whiskybase import get_reference_price
@@ -25,6 +26,7 @@ def calculate_arbitrage(scraped_data):
         profit = market_price - twe_price
         roi = (profit / twe_price) * 100
         
+        # Only add to deals if it's actually profitable
         if profit > 0:
             opportunities.append({
                 "bottle_scraped": raw_name,
@@ -35,6 +37,7 @@ def calculate_arbitrage(scraped_data):
                 "roi_percent": round(roi, 2)
             })
                 
+    # Sort the final list so the most profitable deals are at the top
     return sorted(opportunities, key=lambda x: x["potential_profit_gbp"], reverse=True)
 
 @app.route('/scan', methods=['GET'])
@@ -43,7 +46,8 @@ def scan():
         # Step 1: Get live TWE retail prices
         live_data = get_live_twe_data("macallan")
         
-        # Step 2 & 3: Clean names and get Whiskybase prices (limiting to 3 for speed)
+        # Step 2 & 3: Clean names and get Whiskybase prices 
+        # (Limiting to the first 3 items during testing)
         opportunities = calculate_arbitrage(live_data[:3]) 
         
         return jsonify({
@@ -55,4 +59,7 @@ def scan():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Render assigns a specific port in the cloud, otherwise default to 5000 locally
+    port = int(os.environ.get("PORT", 5000))
+    # host='0.0.0.0' tells Flask to broadcast to the outside world
+    app.run(host='0.0.0.0', port=port)
