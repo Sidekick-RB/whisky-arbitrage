@@ -5,10 +5,14 @@ from playwright_stealth import Stealth
 
 async def search_whiskybase_async(search_term):
     async with Stealth().use_async(async_playwright()) as p:
-        # CHANGED: headless=True so the cloud server doesn't crash looking for a monitor
         browser = await p.chromium.launch(
             headless=True,
-            args=["--disable-blink-features=AutomationControlled"]
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--disable-dev-shm-usage",  # Crucial for low-memory cloud servers
+                "--no-sandbox",             # Required for many cloud environments
+                "--disable-gpu"             # Saves memory by not using graphics processing
+            ]
         )
         
         context = await browser.new_context(
@@ -16,6 +20,15 @@ async def search_whiskybase_async(search_term):
             viewport={"width": 1920, "height": 1080}
         )
         page = await context.new_page()
+        
+        # Put the browser on a diet: Block images, CSS, media, and fonts to save RAM
+        async def intercept_route(route):
+            if route.request.resource_type in ["image", "media", "font", "stylesheet"]:
+                await route.abort()
+            else:
+                await route.continue_()
+                
+        await page.route("**/*", intercept_route)
         
         try:
             print(f"\n--- Searching Whiskybase for: {search_term} ---")
