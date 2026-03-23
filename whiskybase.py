@@ -9,9 +9,9 @@ async def search_whiskybase_async(search_term):
             headless=True,
             args=[
                 "--disable-blink-features=AutomationControlled",
-                "--disable-dev-shm-usage",  # Crucial for low-memory cloud servers
-                "--no-sandbox",             # Required for many cloud environments
-                "--disable-gpu"             # Saves memory by not using graphics processing
+                "--disable-dev-shm-usage",  
+                "--no-sandbox",             
+                "--disable-gpu"             
             ]
         )
         
