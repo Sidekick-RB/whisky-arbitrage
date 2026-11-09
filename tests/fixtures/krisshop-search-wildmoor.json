@@ -1,0 +1,63 @@
+{
+  "data": {
+    "products": {
+      "total_count": 3,
+      "items": [
+        {
+          "sku": "K397092CF-model",
+          "name": "WILDMOOR 40 BLACK MOUNTAIN",
+          "url_key": "k397092cf-model",
+          "stock_status": "IN_STOCK",
+          "price_range": {
+            "minimum_price": {
+              "regular_price": {
+                "value": 1210,
+                "currency": "SGD"
+              },
+              "final_price": {
+                "value": 968,
+                "currency": "SGD"
+              }
+            }
+          }
+        },
+        {
+          "sku": "K397090CF-model",
+          "name": "WILDMOOR 23 WAKING FOREST",
+          "url_key": "k397090cf-model",
+          "stock_status": "IN_STOCK",
+          "price_range": {
+            "minimum_price": {
+              "regular_price": {
+                "value": 255,
+                "currency": "SGD"
+              },
+              "final_price": {
+                "value": 204,
+                "currency": "SGD"
+              }
+            }
+          }
+        },
+        {
+          "sku": "K397091CF-model",
+          "name": "WILDMOOR 30 TROPICAL COAST",
+          "url_key": "k397091cf-model",
+          "stock_status": "IN_STOCK",
+          "price_range": {
+            "minimum_price": {
+              "regular_price": {
+                "value": 522,
+                "currency": "SGD"
+              },
+              "final_price": {
+                "value": 417.6,
+                "currency": "SGD"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

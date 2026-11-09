@@ -1,0 +1,27 @@
+<!-- SYNTHETIC fixture for tests/test_twe.py (NOT a live fetch).
+The live site returns a Cloudflare challenge to curl, so no live page
+could be fetched 9 Nov 2026. Structure is grounded in the old in-repo
+scraper (scraper.py, Mar 2026): search results carry product cards,
+the name in a name-classed anchor to the product page and the price in
+a price-classed element. Live markup is UNVALIDATED; the driver
+reports "blocked" on challenge pages.
+-->
+<html><head><title>Search results for "glenfarclas" | The Whisky Exchange</title></head>
+<body>
+<div class="search-results">
+<div class="product-card">
+<a class="product-card__name" href="/p/12345/royal-brackla-18-year-old">Royal Brackla 18 Year Old Palo Cortado Sherry Cask Finish 70cl</a>
+<p class="product-card__price">£137.95</p>
+</div>
+<div class="product-card">
+<a class="product-card__name" href="/p/23456/jack-daniels-10-year-old-batch-5">Jack Daniel's 10 Year Old Batch 5 70cl</a>
+<p class="product-card__price">£115.00</p>
+</div>
+<div class="product-card">
+<a class="product-card__name" href="/p/34567/glenfarclas-25-year-old">Glenfarclas 25 Year Old 70cl</a>
+<p class="product-card__price">£225.00</p>
+<span class="product-card__availability">Out of Stock</span>
+</div>
+</div>
+<div class="pagination"><a href="/search?q=glenfarclas&amp;page=2">2</a></div>
+</body></html>

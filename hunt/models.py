@@ -19,6 +19,7 @@ VERDICTS = ("qualifier", "close-find", "not-a-deal", "unverified",
 
 _FILLERS = ("single malt", "blended malt", "scotch whisky",
             "blended scotch whisky", "tennessee whiskey", "bourbon",
+            "whisky", "whiskey",
             "with gift box", "w/ gift box", "gift box")
 
 
@@ -60,6 +61,7 @@ def canonical_from_name(name):
     if text.startswith("the "):
         text = text[4:]
     text = re.sub(r"(\d+)\s*year\s*old", r"\1yr", text)
+    text = re.sub(r"(\d+)\s*years?\b", r"\1yr", text)
     text = re.sub(r"\b\d+(\.\d+)?\s?(ml|l|cl)\b", " ", text)
     text = text.replace("w/", " ")
     for filler in _FILLERS:
@@ -118,7 +120,12 @@ class Listing:
 
 @dataclass(frozen=True)
 class OverseasPrice:
-    """One verified overseas retail price. Only in-stock prices count."""
+    """One verified overseas retail price. Only in-stock prices count.
+
+    name is the listing name as shown; run.py matches it back to the
+    local listing by canonical key, so a price without a name cannot
+    be paired and must not be used as a benchmark.
+    """
 
     retailer: str
     country: str
@@ -127,6 +134,7 @@ class OverseasPrice:
     size_ml: int
     in_stock: bool
     url: str
+    name: str = ""
 
     def __post_init__(self):
         assert self.retailer, "retailer must be non-empty"
@@ -135,7 +143,8 @@ class OverseasPrice:
         assert self.price > 0, "price must be positive"
         assert self.size_ml > 0, "size must be positive"
         assert isinstance(self.in_stock, bool)
-        assert self.url.startswith("http"), "url must be absolute"
+        assert isinstance(self.url, str) and self.url.startswith("http")
+        assert isinstance(self.name, str), "name must be a string"
 
 
 @dataclass(frozen=True)
@@ -217,6 +226,7 @@ class Comparison:
                 "currency": self.overseas_best.currency,
                 "price": self.overseas_best.price,
                 "size_ml": self.overseas_best.size_ml,
+                "name": self.overseas_best.name,
                 "url": self.overseas_best.url,
             }
         result = {

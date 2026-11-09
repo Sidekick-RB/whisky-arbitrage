@@ -1,0 +1,113 @@
+{
+  "data": {
+    "products": {
+      "total_count": 9,
+      "items": [
+        {
+          "sku": "180753CF-model",
+          "name": "WOOD FORD RESERVE 700ML/3",
+          "url_key": "180753cf-model",
+          "stock_status": "IN_STOCK",
+          "targetsegment": "12516",
+          "travelexclusive": 0,
+          "price_range": {
+            "minimum_price": {
+              "regular_price": {
+                "value": 1988,
+                "currency": "SGD"
+              },
+              "final_price": {
+                "value": 1590.4,
+                "currency": "SGD"
+              }
+            }
+          }
+        },
+        {
+          "sku": "K366655",
+          "name": "Woodford Reserve Distillers Select 1L 43.2% Sgwl",
+          "url_key": "woodford-reserve-distillers-select-1l-sg-with-love",
+          "stock_status": "IN_STOCK",
+          "targetsegment": "12516",
+          "travelexclusive": 1,
+          "price_range": {
+            "minimum_price": {
+              "regular_price": {
+                "value": 65,
+                "currency": "SGD"
+              },
+              "final_price": {
+                "value": 52,
+                "currency": "SGD"
+              }
+            }
+          }
+        },
+        {
+          "sku": "K359313DP",
+          "name": "(DP) Woodford Reserve Double Oaked 100 Cl 43.2",
+          "url_key": "woodford-reserve-double-oaked-100-cl-43-2",
+          "stock_status": "IN_STOCK",
+          "targetsegment": "12515",
+          "travelexclusive": 0,
+          "price_range": {
+            "minimum_price": {
+              "regular_price": {
+                "value": 129,
+                "currency": "SGD"
+              },
+              "final_price": {
+                "value": 129,
+                "currency": "SGD"
+              }
+            }
+          }
+        },
+        {
+          "sku": "K366655DP",
+          "name": "(DP) Woodford Reserve Distillers Select 1L 43.2% Sgwl",
+          "url_key": "woodford-reserve-distillers-select-1l-sg-with-love",
+          "stock_status": "IN_STOCK",
+          "targetsegment": "12515",
+          "travelexclusive": 0,
+          "price_range": {
+            "minimum_price": {
+              "regular_price": {
+                "value": 102,
+                "currency": "SGD"
+              },
+              "final_price": {
+                "value": 102,
+                "currency": "SGD"
+              }
+            }
+          }
+        },
+        {
+          "sku": "K359313",
+          "name": "Woodford Reserve Double Oaked 100 Cl 43.2",
+          "url_key": "woodford-reserve-double-oaked-100-cl-43-2",
+          "stock_status": "IN_STOCK",
+          "targetsegment": "12516",
+          "travelexclusive": 1,
+          "price_range": {
+            "minimum_price": {
+              "regular_price": {
+                "value": 99,
+                "currency": "SGD"
+              },
+              "final_price": {
+                "value": 89.1,
+                "currency": "SGD"
+              }
+            }
+          }
+        }
+      ],
+      "page_info": {
+        "total_pages": 2,
+        "current_page": 1
+      }
+    }
+  }
+}

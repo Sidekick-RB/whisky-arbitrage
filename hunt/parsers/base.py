@@ -5,7 +5,9 @@ parse_page_html(html, ...) function (unit-testable from a saved fixture)
 plus a small async driver that pages through a site with bounded loops.
 """
 
+import json
 import re
+import urllib.request
 
 MAX_PAGES = 40
 MAX_LISTINGS = 2000
@@ -30,12 +32,78 @@ _HEAVY_TYPES = ("image", "media", "font", "stylesheet")
 _SIZE_RE = re.compile(r"(\d+(?:\.\d+)?)\s?(ml|l|cl)\b", re.IGNORECASE)
 _PRICE_RE = re.compile(r"\$?\s*([\d,]+(?:\.\d{1,2})?)")
 
+# Bot-wall markers: (substring, wall name). Checked before any product
+# parse; a match means the page is a challenge page, not a listing.
+BOT_WALL_MARKERS = (
+    ("Just a moment...", "cloudflare"),
+    ("challenges.cloudflare.com", "cloudflare"),
+    ("Vercel Security Checkpoint", "vercel-checkpoint"),
+    ("px-captcha", "perimeterx"),
+    ("PerimeterX", "perimeterx"),
+    ("Please enable JS and disable any ad blocker", "datadome"),
+    ("Attention Required! | Cloudflare", "cloudflare"),
+)
 
-def parse_price_sgd(text):
-    """Parse a displayed price such as "$44.95" or "S$1,234.56".
 
-    Returns a float, or None when the text carries no price. Never
-    invents a price from a partial match.
+def detect_bot_wall(html):
+    """Bot-wall name when the page is a challenge page, else None."""
+    assert isinstance(html, str), "html must be a string"
+    assert html, "html must be non-empty"
+    for marker, wall in BOT_WALL_MARKERS:
+        assert marker and wall, "marker and wall must be non-empty"
+        if marker in html:
+            return wall
+    return None
+
+
+def fetch_json(url):
+    """GET a JSON URL with a browser User-Agent. Returns the parsed
+    JSON value (dict or list), or None on any failure (HTTP error,
+    non-JSON body, timeout). A None never becomes a price; the caller
+    records it as an error."""
+    assert isinstance(url, str) and url.startswith("http")
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            assert response.status == 200, "fetch must be HTTP 200"
+            body = response.read()
+    except Exception:
+        return None
+    assert body, "feed body must be non-empty"
+    try:
+        data = json.loads(body.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        return None
+    if not isinstance(data, (dict, list)):
+        return None
+    return data
+
+
+def fetch_text(url):
+    """GET a URL with a browser User-Agent. Returns the decoded body,
+    or None on any failure. A None never becomes a listing; the caller
+    records it as an error."""
+    assert isinstance(url, str) and url.startswith("http")
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            assert response.status == 200, "fetch must be HTTP 200"
+            body = response.read()
+    except Exception:
+        return None
+    assert body, "page body must be non-empty"
+    try:
+        text = body.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+    return text
+
+
+def parse_price(text):
+    """Parse a displayed price amount, any currency. Returns float or None.
+
+    The currency symbol is ignored here; the caller records currency
+    from the retailer. Never invents a price from a partial match.
     """
     assert isinstance(text, str), "price text must be a string"
     match = _PRICE_RE.search(text)
@@ -47,6 +115,30 @@ def parse_price_sgd(text):
         return None
     assert value is None or value > 0
     return value if value > 0 else None
+
+
+def detect_currency(text):
+    """Currency code from a price string: GBP for £, USD for $, else None."""
+    assert isinstance(text, str), "price text must be a string"
+    if "£" in text:
+        return "GBP"
+    if "$" in text:
+        return "USD"
+    if "€" in text:
+        return "EUR"
+    return None
+
+
+def parse_price_sgd(text):
+    """Parse a displayed SGD price such as "$44.95" or "S$1,234.56".
+
+    Returns a float, or None when the text carries no price. Never
+    invents a price from a partial match.
+    """
+    assert isinstance(text, str), "price text must be a string"
+    result = parse_price(text)
+    assert result is None or result > 0
+    return result
 
 
 def parse_size_ml(text):

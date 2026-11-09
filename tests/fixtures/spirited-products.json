@@ -1,0 +1,153 @@
+{
+  "products": [
+    {
+      "title": "Blanton's Original Single Barrel Bourbon Whiskey",
+      "handle": "blantons-original-single-barrel-bourbon-whiskey",
+      "vendor": "The Whisky Exchange",
+      "product_type": "Straight Bourbon Whiskey",
+      "tags": [
+        "Blanton's",
+        "Bourbon",
+        "Buffalo Trace",
+        "Kentucky",
+        "New American Oak",
+        "Sazerac",
+        "Single Barrel",
+        "USA",
+        "Whiskey"
+      ],
+      "variants": [
+        {
+          "id": 50512008773794,
+          "title": "Default Title",
+          "option1": "Default Title",
+          "option2": null,
+          "option3": null,
+          "sku": null,
+          "requires_shipping": true,
+          "taxable": false,
+          "featured_image": null,
+          "available": true,
+          "price": "145.00",
+          "grams": 1501,
+          "compare_at_price": null,
+          "position": 1,
+          "product_id": 10311872970914,
+          "created_at": "2026-09-22T15:31:47+08:00",
+          "updated_at": "2026-11-09T16:45:42+08:00"
+        }
+      ]
+    },
+    {
+      "title": "W L Weller 12 Year Old Kentucky Straight Bourbon Whiskey",
+      "handle": "w-l-weller-12-year-old-kentucky-straight-bourbon-whiskey",
+      "vendor": "The Whisky Exchange",
+      "product_type": "Straight Bourbon Whiskey",
+      "tags": [
+        "12 Years Old",
+        "Bourbon",
+        "Buffalo Trace",
+        "Kentucky",
+        "New American Oak",
+        "Sazerac",
+        "USA",
+        "W L Weller",
+        "Wheated Bourbon",
+        "Whiskey"
+      ],
+      "variants": [
+        {
+          "id": 50511650324642,
+          "title": "Default Title",
+          "option1": "Default Title",
+          "option2": null,
+          "option3": null,
+          "sku": null,
+          "requires_shipping": true,
+          "taxable": false,
+          "featured_image": null,
+          "available": true,
+          "price": "235.00",
+          "grams": 1501,
+          "compare_at_price": null,
+          "position": 1,
+          "product_id": 10311801929890,
+          "created_at": "2026-09-22T12:53:44+08:00",
+          "updated_at": "2026-11-09T16:45:42+08:00"
+        }
+      ]
+    },
+    {
+      "title": "High West Campfire",
+      "handle": "high-west-campfire",
+      "vendor": "99Drinks",
+      "product_type": "Blended Whisky",
+      "tags": [
+        "Blended Whisky",
+        "High West",
+        "Peated",
+        "Scotch Whisky",
+        "Single Malt",
+        "USA",
+        "Utah",
+        "Whiskey"
+      ],
+      "variants": [
+        {
+          "id": 45095766917282,
+          "title": "Default Title",
+          "option1": "Default Title",
+          "option2": null,
+          "option3": null,
+          "sku": null,
+          "requires_shipping": true,
+          "taxable": false,
+          "featured_image": null,
+          "available": false,
+          "price": "150.00",
+          "grams": 1501,
+          "compare_at_price": null,
+          "position": 1,
+          "product_id": 8547232579746,
+          "created_at": "2024-11-27T15:27:37+08:00",
+          "updated_at": "2026-11-09T16:45:42+08:00"
+        }
+      ]
+    },
+    {
+      "title": "High West Double Rye",
+      "handle": "high-west-double-rye",
+      "vendor": "99Drinks",
+      "product_type": "Straight Rye Whiskey",
+      "tags": [
+        "High West",
+        "MGP",
+        "Rye",
+        "USA",
+        "Utah",
+        "Whiskey"
+      ],
+      "variants": [
+        {
+          "id": 44489997746338,
+          "title": "Default Title",
+          "option1": "Default Title",
+          "option2": null,
+          "option3": null,
+          "sku": null,
+          "requires_shipping": true,
+          "taxable": false,
+          "featured_image": null,
+          "available": false,
+          "price": "120.00",
+          "grams": 1501,
+          "compare_at_price": null,
+          "position": 1,
+          "product_id": 8323472359586,
+          "created_at": "2024-05-09T19:10:58+08:00",
+          "updated_at": "2026-11-09T16:45:42+08:00"
+        }
+      ]
+    }
+  ]
+}

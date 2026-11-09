@@ -1,0 +1,31 @@
+{
+  "data": {
+    "products": {
+      "total_count": 2,
+      "items": [
+        {
+          "sku": "180753CF-model",
+          "name": "WOOD FORD RESERVE 700ML/3",
+          "url_key": "180753cf-model",
+          "stock_status": "IN_STOCK",
+          "price_range": {
+            "minimum_price": {
+              "regular_price": {
+                "value": 1988,
+                "currency": "SGD"
+              },
+              "final_price": {
+                "value": 1590.4,
+                "currency": "SGD"
+              }
+            }
+          }
+        }
+      ],
+      "page_info": {
+        "total_pages": 1,
+        "current_page": 1
+      }
+    }
+  }
+}

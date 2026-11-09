@@ -1,0 +1,394 @@
+{
+  "products": [
+    {
+      "title": "Chivas Regal 25 Years Blended Whisky 700ml",
+      "handle": "chivas-regal-25-years-blended-whisky-700ml",
+      "vendor": "Chivas Regal",
+      "product_type": "Whisky",
+      "tags": [
+        "7th Month Promo",
+        "Blended Whisky",
+        "Chivas Regal",
+        "Chivas Regal - Blended",
+        "Le Cercle",
+        "Pernod Ricard",
+        "Scotland",
+        "Scotland Whisky",
+        "Speyside",
+        "Spirits",
+        "Spirits Exclude Storewide Discount",
+        "Whisky",
+        "Whisky Promo"
+      ],
+      "variants": [
+        {
+          "id": 50005801992472,
+          "title": "1 Bottle",
+          "option1": "1 Bottle",
+          "option2": null,
+          "option3": null,
+          "sku": "",
+          "requires_shipping": true,
+          "taxable": true,
+          "featured_image": null,
+          "available": true,
+          "price": "309.00",
+          "grams": 0,
+          "compare_at_price": "450.00",
+          "position": 1,
+          "product_id": 9418249371928,
+          "created_at": "2025-04-24T12:43:32+08:00",
+          "updated_at": "2026-11-09T16:46:09+08:00"
+        },
+        {
+          "id": 50005802025240,
+          "title": "3 Bottles",
+          "option1": "3 Bottles",
+          "option2": null,
+          "option3": null,
+          "sku": "",
+          "requires_shipping": true,
+          "taxable": true,
+          "featured_image": null,
+          "available": true,
+          "price": "897.00",
+          "grams": 0,
+          "compare_at_price": "1350.00",
+          "position": 2,
+          "product_id": 9418249371928,
+          "created_at": "2025-04-24T12:43:32+08:00",
+          "updated_at": "2026-11-09T16:46:09+08:00"
+        },
+        {
+          "id": 50005802058008,
+          "title": "6 Bottles",
+          "option1": "6 Bottles",
+          "option2": null,
+          "option3": null,
+          "sku": "",
+          "requires_shipping": true,
+          "taxable": true,
+          "featured_image": null,
+          "available": true,
+          "price": "1728.00",
+          "grams": 0,
+          "compare_at_price": "2700.00",
+          "position": 3,
+          "product_id": 9418249371928,
+          "created_at": "2025-04-24T12:43:32+08:00",
+          "updated_at": "2026-11-09T16:46:09+08:00"
+        }
+      ]
+    },
+    {
+      "title": "Redbreast 21 Years 700ml",
+      "handle": "redbreast-21-years-700ml",
+      "vendor": "Redbreast",
+      "product_type": "Whisky",
+      "tags": [
+        "LMDW",
+        "Pernod Ricard",
+        "Redbreast",
+        "Spirits",
+        "Whisky"
+      ],
+      "variants": [
+        {
+          "id": 52294263374104,
+          "title": "Default Title",
+          "option1": "Default Title",
+          "option2": null,
+          "option3": null,
+          "sku": null,
+          "requires_shipping": true,
+          "taxable": true,
+          "featured_image": null,
+          "available": true,
+          "price": "358.00",
+          "grams": 0,
+          "compare_at_price": "385.00",
+          "position": 1,
+          "product_id": 9418585604376,
+          "created_at": "2026-06-17T14:43:33+08:00",
+          "updated_at": "2026-11-09T16:46:08+08:00"
+        }
+      ]
+    },
+    {
+      "title": "Hibiki 30 Years Blended Whisky 700ml",
+      "handle": "hibiki-30-years-blended-whisky-700ml",
+      "vendor": "Hibiki",
+      "product_type": "Whisky",
+      "tags": [
+        "Hibiki",
+        "Hibiki - Blended",
+        "Japan",
+        "Japan Whisky",
+        "Spirits",
+        "Whisky"
+      ],
+      "variants": [
+        {
+          "id": 50731132715288,
+          "title": "Default Title",
+          "option1": "Default Title",
+          "option2": null,
+          "option3": null,
+          "sku": null,
+          "requires_shipping": true,
+          "taxable": true,
+          "featured_image": null,
+          "available": true,
+          "price": "5888.00",
+          "grams": 0,
+          "compare_at_price": null,
+          "position": 1,
+          "product_id": 9895944192280,
+          "created_at": "2025-10-09T10:44:21+08:00",
+          "updated_at": "2026-11-09T16:46:07+08:00"
+        }
+      ]
+    },
+    {
+      "title": "Glenmorangie 25 Years Single Malt Whisky 750ml",
+      "handle": "glenmorangie-25-years-single-malt-whisky-750ml",
+      "vendor": "Glenmorangie",
+      "product_type": "Whisky",
+      "tags": [
+        "Glenmorangie",
+        "Glenmorangie - Single Malt",
+        "Spirits",
+        "Spirits Exclude Storewide Discount",
+        "Whisky"
+      ],
+      "variants": [
+        {
+          "id": 50717837984024,
+          "title": "1 Bottle",
+          "option1": "1 Bottle",
+          "option2": null,
+          "option3": null,
+          "sku": null,
+          "requires_shipping": true,
+          "taxable": true,
+          "featured_image": null,
+          "available": true,
+          "price": "699.00",
+          "grams": 0,
+          "compare_at_price": null,
+          "position": 1,
+          "product_id": 9892523507992,
+          "created_at": "2025-10-03T11:54:10+08:00",
+          "updated_at": "2026-11-09T16:46:07+08:00"
+        },
+        {
+          "id": 50717838016792,
+          "title": "2 Bottles",
+          "option1": "2 Bottles",
+          "option2": null,
+          "option3": null,
+          "sku": null,
+          "requires_shipping": true,
+          "taxable": true,
+          "featured_image": null,
+          "available": true,
+          "price": "1366.00",
+          "grams": 0,
+          "compare_at_price": null,
+          "position": 2,
+          "product_id": 9892523507992,
+          "created_at": "2025-10-03T11:54:10+08:00",
+          "updated_at": "2026-11-09T16:46:07+08:00"
+        }
+      ]
+    },
+    {
+      "title": "Singleton 15 Years Single Malt Whisky 700ml",
+      "handle": "singleton-15-years-single-malt-whisky-700ml",
+      "vendor": "Singleton",
+      "product_type": "Whisky",
+      "tags": [
+        "Diageo",
+        "Malt",
+        "Original Bottling",
+        "Scotland",
+        "Single Malt Whisky",
+        "Singleton",
+        "Singleton - Single Malt",
+        "Spirits",
+        "Spirits Exclude Storewide Discount",
+        "Whisky"
+      ],
+      "variants": [
+        {
+          "id": 49836521292056,
+          "title": "Default Title",
+          "option1": "Default Title",
+          "option2": null,
+          "option3": null,
+          "sku": null,
+          "requires_shipping": true,
+          "taxable": true,
+          "featured_image": null,
+          "available": true,
+          "price": "85.00",
+          "grams": 0,
+          "compare_at_price": "120.00",
+          "position": 1,
+          "product_id": 9678547288344,
+          "created_at": "2025-03-04T13:49:35+08:00",
+          "updated_at": "2026-11-09T16:47:58+08:00"
+        }
+      ]
+    },
+    {
+      "title": "Johnnie Walker Blue Label Festive Blend Limited Edition Bundle A",
+      "handle": "johnnie-walker-blue-label-festive-blend-limited-edition-bundle-a",
+      "vendor": "Johnnie Walker",
+      "product_type": "Whisky",
+      "tags": [
+        "Festive Bundle Deals",
+        "Festive Bundle Deals - Celebrate More",
+        "Gifting",
+        "Johnnie Walker",
+        "Johnnie Walker Festive Blend",
+        "October Promo - Whisky",
+        "Spirits",
+        "Whisky"
+      ],
+      "variants": [
+        {
+          "id": 52755714703640,
+          "title": "Default Title",
+          "option1": "Default Title",
+          "option2": null,
+          "option3": null,
+          "sku": null,
+          "requires_shipping": true,
+          "taxable": true,
+          "featured_image": null,
+          "available": true,
+          "price": "445.00",
+          "grams": 0,
+          "compare_at_price": "546.00",
+          "position": 1,
+          "product_id": 10435807904024,
+          "created_at": "2026-09-24T10:47:37+08:00",
+          "updated_at": "2026-11-09T16:46:05+08:00"
+        }
+      ]
+    },
+    {
+      "title": "Born Irish Whisky 80 Proof 700ml",
+      "handle": "born-irish-whisky-80-proof-700ml",
+      "vendor": "Born Irish",
+      "product_type": "Whisky",
+      "tags": [
+        "11.11 - 2026",
+        "Born Irish",
+        "Ireland",
+        "Irish Whisky",
+        "Spirits",
+        "The First Pour",
+        "Whisky",
+        "Whisky Promo"
+      ],
+      "variants": [
+        {
+          "id": 48953392627992,
+          "title": "Default Title",
+          "option1": "Default Title",
+          "option2": null,
+          "option3": null,
+          "sku": "",
+          "requires_shipping": true,
+          "taxable": true,
+          "featured_image": null,
+          "available": true,
+          "price": "75.00",
+          "grams": 0,
+          "compare_at_price": "85.00",
+          "position": 2,
+          "product_id": 9428639121688,
+          "created_at": "2024-08-15T12:39:11+08:00",
+          "updated_at": "2026-11-09T16:46:04+08:00"
+        }
+      ]
+    },
+    {
+      "title": "Rothbury Estate Premium Selection Shiraz Cabernet RV 750ml",
+      "handle": "rothbury-estate-premium-selection-shiraz-cabernet-rv-750ml",
+      "vendor": "Rothbury Estate",
+      "product_type": "Red Wine",
+      "tags": [
+        "11.11 - 2026",
+        "Australia",
+        "Australia Wine",
+        "Platinum",
+        "Red Wine",
+        "Rothbury Estate",
+        "Wine",
+        "Wines Exclude Storewide Discount"
+      ],
+      "variants": [
+        {
+          "id": 52173243711768,
+          "title": "1 Bottle",
+          "option1": "1 Bottle",
+          "option2": null,
+          "option3": null,
+          "sku": null,
+          "requires_shipping": true,
+          "taxable": true,
+          "featured_image": null,
+          "available": true,
+          "price": "39.00",
+          "grams": 0,
+          "compare_at_price": "38.00",
+          "position": 1,
+          "product_id": 10299399504152,
+          "created_at": "2026-06-11T13:04:56+08:00",
+          "updated_at": "2026-11-09T16:46:04+08:00"
+        },
+        {
+          "id": 52173243777304,
+          "title": "6 Bottles",
+          "option1": "6 Bottles",
+          "option2": null,
+          "option3": null,
+          "sku": null,
+          "requires_shipping": true,
+          "taxable": true,
+          "featured_image": null,
+          "available": true,
+          "price": "216.00",
+          "grams": 0,
+          "compare_at_price": "228.00",
+          "position": 2,
+          "product_id": 10299399504152,
+          "created_at": "2026-06-11T13:04:56+08:00",
+          "updated_at": "2026-11-09T16:46:04+08:00"
+        },
+        {
+          "id": 52173243810072,
+          "title": "12 Bottles",
+          "option1": "12 Bottles",
+          "option2": null,
+          "option3": null,
+          "sku": null,
+          "requires_shipping": true,
+          "taxable": true,
+          "featured_image": null,
+          "available": true,
+          "price": "396.00",
+          "grams": 0,
+          "compare_at_price": "38.00",
+          "position": 3,
+          "product_id": 10299399504152,
+          "created_at": "2026-06-11T13:04:56+08:00",
+          "updated_at": "2026-11-09T16:46:04+08:00"
+        }
+      ]
+    }
+  ]
+}

@@ -81,6 +81,17 @@ class CanonicalFromNameTest(unittest.TestCase):
         assert key == "bushmills-16yr-three-wood"
         self.assertEqual(key, "bushmills-16yr-three-wood")
 
+    def test_years_plural_normalised(self):
+        key = canonical_from_name("Redbreast 21 Years 700ml")
+        assert key == "redbreast-21yr"
+        self.assertEqual(key, "redbreast-21yr")
+
+    def test_bare_whisky_dropped(self):
+        key = canonical_from_name(
+            "Glenmorangie 25 Years Single Malt Whisky 750ml")
+        assert key == "glenmorangie-25yr"
+        self.assertEqual(key, "glenmorangie-25yr")
+
 
 class ListingKeyTest(unittest.TestCase):
     def test_listing_key(self):

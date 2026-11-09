@@ -1,0 +1,103 @@
+{
+  "data": {
+    "products": {
+      "total_count": 621,
+      "items": [
+        {
+          "sku": "K397187CF-model",
+          "name": "SHINOBU 15YO PURE MALT WHISKY 0.7L DRAGON EDITION",
+          "url_key": "k397187cf-model",
+          "stock_status": "IN_STOCK",
+          "price_range": {
+            "minimum_price": {
+              "regular_price": {
+                "value": 269,
+                "currency": "SGD"
+              },
+              "final_price": {
+                "value": 215.2,
+                "currency": "SGD"
+              }
+            }
+          }
+        },
+        {
+          "sku": "K395800CF-model",
+          "name": "BALLANTINE'S FINEST BLENDED SCOTCH WHISKY 1L",
+          "url_key": "ballantine's-finest-blended-scotch-whisky-1l",
+          "stock_status": "IN_STOCK",
+          "price_range": {
+            "minimum_price": {
+              "regular_price": {
+                "value": 30,
+                "currency": "SGD"
+              },
+              "final_price": {
+                "value": 30,
+                "currency": "SGD"
+              }
+            }
+          }
+        },
+        {
+          "sku": "K409647DP",
+          "name": "(DP) BUNNAHABHAIN 25YO WHISKY 0.7L",
+          "url_key": "bunnahabhain-25yo-whisky-07l",
+          "stock_status": "IN_STOCK",
+          "price_range": {
+            "minimum_price": {
+              "regular_price": {
+                "value": 891,
+                "currency": "SGD"
+              },
+              "final_price": {
+                "value": 891,
+                "currency": "SGD"
+              }
+            }
+          }
+        },
+        {
+          "sku": "K305567CF-model",
+          "name": "JURA SINGLE MALT SCOTCH WHISKY 18 YEARS OLD",
+          "url_key": "k305567cf-model",
+          "stock_status": "IN_STOCK",
+          "price_range": {
+            "minimum_price": {
+              "regular_price": {
+                "value": 149,
+                "currency": "SGD"
+              },
+              "final_price": {
+                "value": 149,
+                "currency": "SGD"
+              }
+            }
+          }
+        },
+        {
+          "sku": "RBS003190",
+          "name": "DAVINCI TIRE H172MM WHISKY DECANTER 1PC",
+          "url_key": "davinci-tire-h172mm-whisky-decanter-1pc",
+          "stock_status": "IN_STOCK",
+          "price_range": {
+            "minimum_price": {
+              "regular_price": {
+                "value": 256.61,
+                "currency": "SGD"
+              },
+              "final_price": {
+                "value": 256.61,
+                "currency": "SGD"
+              }
+            }
+          }
+        }
+      ],
+      "page_info": {
+        "total_pages": 125,
+        "current_page": 1
+      }
+    }
+  }
+}
