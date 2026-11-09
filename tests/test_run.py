@@ -4,6 +4,7 @@ The live run (browser + network) is not unit-tested here; the
 fixture-server pattern in test_paneco_live.py covers the driver path.
 """
 
+import asyncio
 import json
 import os
 import unittest
@@ -15,6 +16,7 @@ from hunt.parsers.tlc import parse_feed_json as tlc_parse
 from hunt.parsers.twe import parse_search_html as twe_parse
 from hunt.report import ParserHealth
 from hunt.run import (
+    _scrape_sg_urllib,
     aggregate_health,
     dedupe_listings,
     match_overseas,
@@ -213,6 +215,60 @@ class PipelineTest(unittest.TestCase):
                          as_of="2026-11-09")
         assert result.verdict == "unverified"
         self.assertEqual(result.verdict, "unverified")
+
+
+class ScrapeIsolationTest(unittest.TestCase):
+    def test_crashing_parser_recorded_not_fatal(self):
+        # 9 Nov 2026: a Spirited zero-price variant crashed the whole
+        # first Fargate run. One parser raising must now be recorded
+        # as an error entry while the other parsers still run.
+        from hunt.parsers import (
+            asher, krisshop, lmdw, pivene, spirited, tipsy, tlc)
+
+        def _ok(retailer):
+            async def _scrape(seen_at=""):
+                assert seen_at
+                return [], ParserHealth(
+                    retailer=retailer, pages_scanned=1, items_found=0,
+                    status="ok", detail="ok")
+            return _scrape
+
+        async def _boom(seen_at=""):
+            assert seen_at
+            raise RuntimeError("boom")
+
+        saved = [
+            (tlc, "scrape", tlc.scrape),
+            (spirited, "scrape", spirited.scrape),
+            (tipsy, "scrape", tipsy.scrape),
+            (asher, "scrape", asher.scrape),
+            (pivene, "scrape", pivene.scrape),
+            (lmdw, "scrape", lmdw.scrape),
+            (krisshop, "scrape_whisky", krisshop.scrape_whisky),
+        ]
+        tlc.scrape = _ok(tlc.RETAILER)
+        spirited.scrape = _boom
+        tipsy.scrape = _ok(tipsy.RETAILER)
+        asher.scrape = _ok(asher.RETAILER)
+        pivene.scrape = _ok(pivene.RETAILER)
+        lmdw.scrape = _ok(lmdw.RETAILER)
+        krisshop.scrape_whisky = _ok(krisshop.RETAILER)
+        try:
+            listings, health = asyncio.run(_scrape_sg_urllib(SEEN_AT))
+        finally:
+            for module, name, fn in saved:
+                setattr(module, name, fn)
+        assert listings == []
+        assert len(health) == 7
+        by_retailer = {entry.retailer: entry for entry in health}
+        assert by_retailer["Spirited"].status == "error"
+        assert "RuntimeError" in by_retailer["Spirited"].detail
+        assert by_retailer["Spirited"].items_found == 0
+        for retailer in ("The Liquid Collection", "Tipsy Topsy", "Asher",
+                         "PIVENE", "LMDW", "KrisShop"):
+            assert by_retailer[retailer].status == "ok"
+        self.assertEqual(len(health), 7)
+        self.assertEqual(by_retailer["Spirited"].status, "error")
 
 
 if __name__ == "__main__":

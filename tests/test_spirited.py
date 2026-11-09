@@ -52,6 +52,31 @@ class FixtureTest(unittest.TestCase):
         assert by_name["High West Double Rye"].in_stock is False
         self.assertFalse(by_name["High West Campfire"].in_stock)
 
+    def test_zero_price_product_skipped(self):
+        # Live 9 Nov 2026: Spirited's feed prices the Ardbeg Day 2024
+        # event "0.00". Its title passes the whisky filter (Ardbeg +
+        # "Whisky Fest" type), so it reached parse_price and the old
+        # assertion crashed the first Fargate run. It must be skipped.
+        data = {"products": [
+            {"title": "Ardbeg Day 2024 - Ardbeg Spectacular Circus",
+             "product_type": "Whisky Fest",
+             "handle": "ardbeg-day-2024-ardbeg-spectacular-circus",
+             "variants": [{"price": "0.00", "available": False}]},
+            {"title": "Blanton's Original Single Barrel Bourbon Whiskey",
+             "product_type": "Bourbon",
+             "handle": "blantons-original",
+             "variants": [{"price": "145.00", "available": True}]},
+        ]}
+        listings, has_next, seen, skipped = parse_feed_json(data, SEEN_AT)
+        assert len(listings) == 1
+        assert seen == 2
+        assert skipped == 1
+        assert has_next is False
+        assert listings[0].name.startswith("Blanton's")
+        assert listings[0].price_sgd == 145.00
+        self.assertEqual(len(listings), 1)
+        self.assertEqual(skipped, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

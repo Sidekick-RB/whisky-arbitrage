@@ -113,7 +113,9 @@ def parse_price(text):
         value = float(match.group(1).replace(",", ""))
     except ValueError:
         return None
-    assert value is None or value > 0
+    # A zero or negative amount (e.g. a free event ticket priced
+    # "0.00" in a Shopify feed) is not a price: skip it, never crash.
+    assert isinstance(value, float), "parsed amount must be a float"
     return value if value > 0 else None
 
 

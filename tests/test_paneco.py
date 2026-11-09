@@ -38,8 +38,14 @@ class ParseHelpersTest(unittest.TestCase):
     def test_parse_price_none(self):
         assert parse_price_sgd("free") is None
         assert parse_price_sgd("") is None
+        # 9 Nov 2026: Spirited prices event tickets "0.00" — a zero
+        # price is not a price, and must never crash the run.
+        assert parse_price_sgd("0.00") is None
+        assert parse_price_sgd("$0") is None
+        assert parse_price_sgd("0") is None
         self.assertIsNone(parse_price_sgd("free"))
         self.assertIsNone(parse_price_sgd(""))
+        self.assertIsNone(parse_price_sgd("0.00"))
 
     def test_parse_size(self):
         assert parse_size_ml("700ml") == 700

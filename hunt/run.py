@@ -231,15 +231,42 @@ def match_overseas(listing, prices, groq_cache, groq_budget):
     return matched, calls
 
 
+def _error_health(retailer, exc):
+    """ParserHealth for a parser that raised: error, never a crash.
+
+    One bad retailer must never kill the run; the failure is recorded
+    in parser health and the run continues with the other retailers.
+    """
+    assert retailer, "retailer name required"
+    assert isinstance(exc, Exception), "exc must be an exception"
+    detail = "parser crashed: %s: %s" % (type(exc).__name__, str(exc)[:200])
+    health = ParserHealth(
+        retailer=retailer, pages_scanned=0, items_found=0,
+        status="error", detail=detail)
+    assert health.status == "error", "error health must say error"
+    return health
+
+
 async def _scrape_sg_urllib(stamp):
-    """SG parsers that need no browser. Returns (listings, health)."""
+    """SG parsers that need no browser. Returns (listings, health).
+
+    A parser that raises is recorded as an error entry and the run
+    continues with the remaining parsers.
+    """
     assert stamp, "timestamp required"
     listings = []
     health = []
-    for scrape in (tlc.scrape, spirited.scrape, tipsy.scrape,
-                   asher.scrape, pivene.scrape, lmdw.scrape,
-                   krisshop.scrape_whisky):
-        found, entry = await scrape(seen_at=stamp)
+    for scrape, retailer in ((tlc.scrape, tlc.RETAILER),
+                             (spirited.scrape, spirited.RETAILER),
+                             (tipsy.scrape, tipsy.RETAILER),
+                             (asher.scrape, asher.RETAILER),
+                             (pivene.scrape, pivene.RETAILER),
+                             (lmdw.scrape, lmdw.RETAILER),
+                             (krisshop.scrape_whisky, krisshop.RETAILER)):
+        try:
+            found, entry = await scrape(seen_at=stamp)
+        except Exception as exc:
+            found, entry = [], _error_health(retailer, exc)
         assert entry.items_found == len(found)
         listings.extend(found)
         health.append(entry)
@@ -270,23 +297,36 @@ async def run_once(fx, max_pages, paneco_url=None,
     health.extend(sg_health)
     async with Stealth().use_async(async_playwright()) as pw:
         assert pw is not None, "playwright handle required"
-        if paneco_url is not None:
-            found, entry = await paneco.scrape_sale(
-                pw, max_pages=max_pages, seen_at=stamp,
-                sale_url=paneco_url)
-        else:
-            found, entry = await paneco.scrape_sale(
-                pw, max_pages=max_pages, seen_at=stamp)
+        try:
+            if paneco_url is not None:
+                found, entry = await paneco.scrape_sale(
+                    pw, max_pages=max_pages, seen_at=stamp,
+                    sale_url=paneco_url)
+            else:
+                found, entry = await paneco.scrape_sale(
+                    pw, max_pages=max_pages, seen_at=stamp)
+        except Exception as exc:
+            found, entry = [], _error_health(paneco.RETAILER, exc)
         listings.extend(found)
         health.append(entry)
-        found, entry = await cellarbration.scrape(pw, seen_at=stamp)
+        try:
+            found, entry = await cellarbration.scrape(pw, seen_at=stamp)
+        except Exception as exc:
+            found, entry = [], _error_health(cellarbration.RETAILER, exc)
         listings.extend(found)
         health.append(entry)
-        found, entry = await ishopchangi.scrape(pw, seen_at=stamp)
+        try:
+            found, entry = await ishopchangi.scrape(pw, seen_at=stamp)
+        except Exception as exc:
+            found, entry = [], _error_health(ishopchangi.RETAILER, exc)
         listings.extend(found)
         health.append(entry)
         # Blocked SG retailer: probe once, record the wall.
-        _, entry = await maltwineasia.search(pw, "whisky", seen_at=stamp)
+        try:
+            _, entry = await maltwineasia.search(
+                pw, "whisky", seen_at=stamp)
+        except Exception as exc:
+            entry = _error_health(maltwineasia.RETAILER, exc)
         health.append(entry)
         notes.append("Malt & Wine Asia is bot-wall blocked; its three "
                      "watchlist bottles (Macallan 18 2020, Glen Scotia 25, "
