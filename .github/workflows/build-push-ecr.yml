@@ -1,6 +1,7 @@
 # Build + push the whisky hunt image to ECR on push to main.
 #
-# Required repository configuration (workflow fails until these exist):
+# Required repository configuration (set 9 Nov 2026; workflow fails until
+# these exist):
 #   Secrets: AWS_ROLE_TO_ASSUME (IAM role ARN, OIDC-trusted for this repo),
 #            AWS_ACCOUNT_ID
 #   Variables: AWS_REGION (e.g. ap-southeast-1),
