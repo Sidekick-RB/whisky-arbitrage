@@ -154,6 +154,16 @@ Versiform AWS account, ap-southeast-1; state and reports in a versioned
 S3 bucket; Groq API key in Secrets Manager. See
 `~/workspace/bottles/whisky-scraper-plan.md`.
 
+S3 layout (env `S3_BUCKET`, e.g. `whisky-hunt-state-012389890270`):
+each run uploads its report to `reports/hunt-<timestamp>.json` and
+the new baseline state to `state/hunt-state.json`, which the next run
+downloads first so its diff is meaningful. When `S3_BUCKET` is unset
+(local runs) S3 is skipped entirely; when it is set and an upload
+fails, the runner exits 3 because the output would be lost with the
+container. The ECS task role needs `s3:GetObject`/`s3:PutObject` on
+the bucket; the execution role needs `secretsmanager:GetSecretValue`
+on `whisky-hunt/groq` for the `GROQ_API_KEY` injection.
+
 ### Coding standard
 
 JPL Power of Ten, Python adaptation (see `~/AGENTS.md`): simple control

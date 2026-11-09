@@ -53,6 +53,7 @@ from .report import (
     write_json_file,
     write_report,
 )
+from .s3upload import STATE_KEY, download_file, report_key, upload_run
 
 DEFAULT_OUT = "hunt-report.json"
 DEFAULT_STATE = "hunt-state.json"
@@ -397,7 +398,8 @@ def build_state(listings):
 
 
 def main(argv=None):
-    """Entry point. Returns 0 on success, 2 when FX could not be fixed."""
+    """Entry point. Returns 0 on success, 2 when FX could not be
+    fixed, 3 when the S3 upload failed."""
     args = parse_args(list(sys.argv[1:] if argv is None else argv))
     assert args.out.endswith(".json") and args.state.endswith(".json")
     fx = resolve_fx(args)
@@ -408,6 +410,14 @@ def main(argv=None):
     run_id = "hunt-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     run_at = datetime.now(timezone.utc).isoformat()
     assert run_id.startswith("hunt-") and run_at
+    bucket = os.environ.get("S3_BUCKET") or ""
+    assert isinstance(bucket, str), "S3_BUCKET must be a string"
+    if bucket and not os.path.exists(args.state):
+        # Fargate has no local baseline: pull last week's state so the
+        # diff is meaningful. A missing object just means no baseline.
+        if download_file(bucket, STATE_KEY, args.state):
+            print("Baseline state downloaded from s3://%s/%s"
+                  % (bucket, STATE_KEY))
     listings, health, comparisons, notes = asyncio.run(
         run_once(fx, args.max_pages, args.paneco_url,
                  args.max_overseas_queries, args.max_groq_calls))
@@ -418,6 +428,19 @@ def main(argv=None):
                           notes)
     assert write_report(report, args.out), "report write failed"
     assert write_json_file(state, args.state), "state write failed"
+    if bucket:
+        # The Fargate filesystem is ephemeral: the report and the new
+        # baseline must reach S3 before the task stops.
+        report_ok, state_ok = upload_run(
+            bucket, args.out, args.state, run_id)
+        if report_ok and state_ok:
+            print("Uploaded s3://%s/%s and s3://%s/%s"
+                  % (bucket, report_key(run_id), bucket, STATE_KEY))
+        else:
+            print("ERROR: S3 upload failed (report=%s state=%s); "
+                  "the run's output is lost with the container."
+                  % (report_ok, state_ok), file=sys.stderr)
+            return 3
     qualifiers = [c for c in comparisons if c["verdict"] == "qualifier"]
     close_finds = [c for c in comparisons if c["verdict"] == "close-find"]
     print("SG: %d listings across %d retailers"
