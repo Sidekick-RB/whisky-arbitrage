@@ -1,0 +1,68 @@
+# Build + push the whisky hunt image to ECR on push to main.
+#
+# Required repository configuration (workflow fails until these exist):
+#   Secrets: AWS_ROLE_TO_ASSUME (IAM role ARN, OIDC-trusted for this repo),
+#            AWS_ACCOUNT_ID
+#   Variables: AWS_REGION (e.g. ap-southeast-1),
+#              ECR_REPOSITORY (e.g. whisky-hunt)
+# The role needs ecr:GetAuthorizationToken, ecr:BatchCheckLayerAvailability,
+# ecr:PutImage, ecr:InitiateLayerUpload, ecr:UploadLayerPart,
+# ecr:CompleteLayerUpload on the repository. No static AWS keys are used.
+name: build-push-ecr
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "hunt/**"
+      - "Dockerfile"
+      - ".dockerignore"
+      - ".github/workflows/build-push-ecr.yml"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Lint and test
+        run: |
+          python -m pip install pyflakes
+          python -m py_compile hunt/*.py hunt/parsers/*.py tests/*.py
+          python -m pyflakes hunt tests
+          python -m unittest discover -s tests -v
+
+  build-push:
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials (OIDC role)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build and push image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" .
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          docker tag "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
+            "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
