@@ -247,6 +247,21 @@ def _error_health(retailer, exc):
     return health
 
 
+def _log_parser(entry):
+    """One progress line per parser, flushed immediately.
+
+    Stdout is block-buffered in Fargate, so without flush=True
+    nothing reaches CloudWatch until the run ends. A 15-minute
+    crash check can only see where the run is when each parser
+    logs its result as it finishes.
+    """
+    assert entry.retailer, "health must name a retailer"
+    assert entry.status, "health status required"
+    print("%s: %d listings, %s (%s)" % (
+        entry.retailer, entry.items_found, entry.status,
+        entry.detail[:120]), flush=True)
+
+
 async def _scrape_sg_urllib(stamp):
     """SG parsers that need no browser. Returns (listings, health).
 
@@ -270,6 +285,7 @@ async def _scrape_sg_urllib(stamp):
         assert entry.items_found == len(found)
         listings.extend(found)
         health.append(entry)
+        _log_parser(entry)
     assert health, "at least one SG health entry required"
     return listings, health
 
@@ -309,18 +325,21 @@ async def run_once(fx, max_pages, paneco_url=None,
             found, entry = [], _error_health(paneco.RETAILER, exc)
         listings.extend(found)
         health.append(entry)
+        _log_parser(entry)
         try:
             found, entry = await cellarbration.scrape(pw, seen_at=stamp)
         except Exception as exc:
             found, entry = [], _error_health(cellarbration.RETAILER, exc)
         listings.extend(found)
         health.append(entry)
+        _log_parser(entry)
         try:
             found, entry = await ishopchangi.scrape(pw, seen_at=stamp)
         except Exception as exc:
             found, entry = [], _error_health(ishopchangi.RETAILER, exc)
         listings.extend(found)
         health.append(entry)
+        _log_parser(entry)
         # Blocked SG retailer: probe once, record the wall.
         try:
             _, entry = await maltwineasia.search(
@@ -328,6 +347,7 @@ async def run_once(fx, max_pages, paneco_url=None,
         except Exception as exc:
             entry = _error_health(maltwineasia.RETAILER, exc)
         health.append(entry)
+        _log_parser(entry)
         notes.append("Malt & Wine Asia is bot-wall blocked; its three "
                      "watchlist bottles (Macallan 18 2020, Glen Scotia 25, "
                      "Glenfiddich 40) stay unverified.")
@@ -348,6 +368,10 @@ async def run_once(fx, max_pages, paneco_url=None,
             terms, key=lambda term: (-len(terms[term]), term))
         chosen = ordered_terms[:max_overseas_queries]
         skipped_terms = len(ordered_terms) - len(chosen)
+        assert len(ordered_terms) >= len(chosen), "term cap must not grow"
+        assert len(candidates) >= 0, "candidate count must be sane"
+        print("Overseas: %d terms, %d candidates"
+              % (len(chosen), len(candidates)), flush=True)
         if skipped_terms:
             notes.append("%d overseas search terms skipped by the %d-term "
                          "cap" % (skipped_terms, max_overseas_queries))
@@ -377,18 +401,23 @@ async def run_once(fx, max_pages, paneco_url=None,
                 rb_health.append(entry)
                 prices_by_term.setdefault(term, []).extend(found)
         if twe_health:
-            health.append(aggregate_health(twe.RETAILER, twe_health))
+            entry = aggregate_health(twe.RETAILER, twe_health)
+            health.append(entry)
+            _log_parser(entry)
         if ww_health:
-            health.append(aggregate_health(
-                whiskyworld.RETAILER, ww_health))
+            entry = aggregate_health(whiskyworld.RETAILER, ww_health)
+            health.append(entry)
+            _log_parser(entry)
         if rb_health:
-            health.append(aggregate_health(
-                reservebar.RETAILER, rb_health))
+            entry = aggregate_health(reservebar.RETAILER, rb_health)
+            health.append(entry)
+            _log_parser(entry)
         # Blocked overseas retailers: probe once each, record the wall.
         probe_term = chosen[0] if chosen else "whisky"
         for module in (masterofmalt, winecom, totalwine):
             _, entry = await module.search(pw, probe_term, seen_at=stamp)
             health.append(entry)
+            _log_parser(entry)
         notes.append("Master of Malt, Wine.com and Total Wine are "
                      "bot-wall blocked; overseas benchmarks come from "
                      "TWE, The Whisky World and ReserveBar only.")
@@ -485,16 +514,19 @@ def main(argv=None):
     qualifiers = [c for c in comparisons if c["verdict"] == "qualifier"]
     close_finds = [c for c in comparisons if c["verdict"] == "close-find"]
     print("SG: %d listings across %d retailers"
-          % (len(listings), len({c["retailer"] for c in comparisons})))
+          % (len(listings), len({c["retailer"] for c in comparisons})),
+          flush=True)
     print("Qualifiers: %d  Close finds: %d  Unverified: %d"
           % (len(qualifiers), len(close_finds),
-             len([c for c in comparisons if c["verdict"] == "unverified"])))
+             len([c for c in comparisons if c["verdict"] == "unverified"])),
+          flush=True)
     print("New: %d  Price changes: %d  Stock changes: %d  Delisted: %d"
           % (len(diff["new_listings"]), len(diff["price_changes"]),
-             len(diff["stock_changes"]), len(diff["delistings"])))
+             len(diff["stock_changes"]), len(diff["delistings"])),
+          flush=True)
     for entry in health:
         print("  %s: %s (%s)" % (
-            entry.retailer, entry.status, entry.detail))
+            entry.retailer, entry.status, entry.detail), flush=True)
     assert report["schema_version"] == 1
     return 0
 
