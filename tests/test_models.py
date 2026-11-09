@@ -59,6 +59,16 @@ class CanonicalFromNameTest(unittest.TestCase):
         assert key == "royal-brackla-18yr"
         self.assertEqual(key, "royal-brackla-18yr")
 
+    def test_abv_stripped(self):
+        # iShopChangi names always carry ABV ("700ML 46%"); without
+        # this the key would never match an overseas name.
+        key = canonical_from_name(
+            "Royal Brackla 18 Year Old Single Malt Scotch Whisky 700ML 46%")
+        assert key == "royal-brackla-18yr"
+        assert canonical_from_name("Nikka Whiskey Tailored 700ML 43%") == (
+            "nikka-tailored")
+        self.assertEqual(key, "royal-brackla-18yr")
+
     def test_ballantines(self):
         key = canonical_from_name("Ballantine's 23 Year Old American Oak 700ml")
         assert key == "ballantines-23yr-american-oak"
@@ -96,8 +106,17 @@ class CanonicalFromNameTest(unittest.TestCase):
 class ListingKeyTest(unittest.TestCase):
     def test_listing_key(self):
         key = listing_key(_listing())
-        assert key == "Paneco|test-bottle"
-        self.assertEqual(key, "Paneco|test-bottle")
+        assert key == "Paneco|test-bottle|nt"
+        self.assertEqual(key, "Paneco|test-bottle|nt")
+
+    def test_listing_key_carries_mode(self):
+        # Same bottle, two fulfilment modes: different keys, so both
+        # survive dedupe (iShopChangi NT vs TR, KrisShop home vs flight).
+        home = listing_key(_listing())
+        flight = listing_key(_listing(traveller_only=True))
+        assert home != flight
+        assert flight == "Paneco|test-bottle|tr"
+        self.assertEqual(flight, "Paneco|test-bottle|tr")
 
 
 class ValidationTest(unittest.TestCase):

@@ -63,6 +63,10 @@ def canonical_from_name(name):
     text = re.sub(r"(\d+)\s*year\s*old", r"\1yr", text)
     text = re.sub(r"(\d+)\s*years?\b", r"\1yr", text)
     text = re.sub(r"\b\d+(\.\d+)?\s?(ml|l|cl)\b", " ", text)
+    # ABV is not part of the expression identity: "46%" or "43.2%" would
+    # otherwise split the key from overseas names that carry no ABV
+    # (iShopChangi names always carry it, e.g. "700ML 46%").
+    text = re.sub(r"\b\d+(?:\.\d+)?\s*%", " ", text)
     text = text.replace("w/", " ")
     for filler in _FILLERS:
         text = text.replace(filler, " ")
@@ -75,10 +79,15 @@ def canonical_from_name(name):
 
 
 def listing_key(listing):
-    """Stable state key for one listing: retailer + canonical name."""
+    """Stable state key for one listing: retailer + canonical name +
+    fulfilment mode. Two listings of the same bottle at different
+    modes (iShopChangi traveller vs non-traveller, KrisShop flight vs
+    home) are different listings and must both survive dedupe and
+    state diffing, so the mode is part of the key."""
     assert listing.retailer, "retailer must be non-empty"
     assert listing.canonical, "canonical must be non-empty"
-    key = listing.retailer + "|" + listing.canonical
+    mode = "tr" if listing.traveller_only else "nt"
+    key = listing.retailer + "|" + listing.canonical + "|" + mode
     assert "|" in key and len(key) > 2
     return key
 

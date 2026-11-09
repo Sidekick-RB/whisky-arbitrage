@@ -19,6 +19,8 @@ import json
 import os
 from dataclasses import dataclass
 
+from .models import listing_key
+
 REPORT_SCHEMA_VERSION = 1
 MAX_STATE_ENTRIES = 5000
 MAX_REPORT_NOTES = 50
@@ -59,11 +61,13 @@ class ParserHealth:
 
 
 def _entry_key(entry):
-    """State key for a serialized listing entry."""
+    """State key for a serialized listing entry. Same format as
+    listing_key(): retailer + canonical + fulfilment mode."""
     assert isinstance(entry, dict), "state entry must be a dict"
     assert entry.get("retailer"), "entry must carry a retailer"
     assert entry.get("canonical"), "entry must carry a canonical key"
-    key = entry["retailer"] + "|" + entry["canonical"]
+    mode = "tr" if entry.get("traveller_only") else "nt"
+    key = entry["retailer"] + "|" + entry["canonical"] + "|" + mode
     assert "|" in key
     return key
 
@@ -246,5 +250,5 @@ def serialize_listing(listing):
         "url": listing.url,
         "seen_at": listing.seen_at,
     }
-    assert _entry_key(result) == listing.retailer + "|" + listing.canonical
+    assert _entry_key(result) == listing_key(listing)
     return result

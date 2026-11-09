@@ -1,17 +1,17 @@
-"""Weekly hunt runner (slice 2: all SG retailers + overseas comparisons).
+"""Weekly hunt runner (slice 3: all SG retailers + overseas comparisons).
 
 Runs every SG parser (Paneco, Cellarbration, TLC, Spirited, Tipsy
-Topsy, Asher, PIVENE, LMDW, KrisShop), diffs the result against the
-previous state file, then compares every listing against verified
+Topsy, Asher, PIVENE, LMDW, KrisShop, iShopChangi), dedupes by
+retailer+canonical+mode, then compares every listing against verified
 in-stock overseas prices (TWE, The Whisky World, ReserveBar) via
 hunt/engine.py. Groq name-cleaning runs only when an exact canonical
 match fails, and only while the call budget lasts. Blocked overseas
 retailers (Master of Malt, Wine.com, Total Wine) and Malt & Wine Asia
 are probed once per run and reported as blocked, never as prices.
-iShopChangi is NOT scraped: its search API returns no prices and its
-traveller range needs a flight-linked session, so it stays
-browser-verified-only (see README). Promo codes are not applied in
-this slice (codes=()); the effective price is the shelf price.
+iShopChangi is scraped in both modes (Non-Traveller and Traveller),
+each in a fresh browser context; a bottle in both modes yields two
+listings, one per mode. Promo codes are not applied in this slice
+(codes=()); the effective price is the shelf price.
 Never purchases, never adds to cart, never tests a promo code.
 """
 
@@ -28,6 +28,7 @@ from .names import clean_to_key
 from .parsers import (
     asher,
     cellarbration,
+    ishopchangi,
     krisshop,
     lmdw,
     maltwineasia,
@@ -281,6 +282,9 @@ async def run_once(fx, max_pages, paneco_url=None,
         found, entry = await cellarbration.scrape(pw, seen_at=stamp)
         listings.extend(found)
         health.append(entry)
+        found, entry = await ishopchangi.scrape(pw, seen_at=stamp)
+        listings.extend(found)
+        health.append(entry)
         # Blocked SG retailer: probe once, record the wall.
         _, entry = await maltwineasia.search(pw, "whisky", seen_at=stamp)
         health.append(entry)
@@ -375,9 +379,6 @@ async def run_once(fx, max_pages, paneco_url=None,
     if groq_used >= max_groq_calls and max_groq_calls > 0:
         notes.append("Groq call budget (%d) exhausted; later ambiguous "
                      "matches stayed exact-only." % max_groq_calls)
-    notes.append("iShopChangi is browser-verified-only: its search API "
-                 "returns no prices and its traveller range needs a "
-                 "flight-linked session.")
     notes.append("Promo codes are not applied in this slice; effective "
                  "price is the shelf price.")
     assert len(comparisons) == len(listings), (

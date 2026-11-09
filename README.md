@@ -62,8 +62,10 @@ unverified — the engine never fabricates a price.
 
 ### Slice 2 — what the runner does
 
-`hunt/run.py` scrapes every SG retailer, dedupes by retailer+canonical,
-and compares every listing with `hunt/engine.py`:
+`hunt/run.py` scrapes every SG retailer, dedupes by
+retailer+canonical+mode (the mode suffix keeps a bottle's traveller
+and non-traveller listings distinct), and compares every listing
+with `hunt/engine.py`:
 
 - Candidates for an overseas search: in stock, S$100+, verified size.
   Distinct search terms are capped (`--max-overseas-queries`, default
@@ -77,7 +79,7 @@ and compares every listing with `hunt/engine.py`:
   a miss, bounded (`--max-groq-calls`, default 100) and cached by
   name. Without GROQ_API_KEY, ambiguous matches stay unverified.
 - Promo codes are not applied in this slice; effective price is the
-  shelf price. iShopChangi is not scraped (see below).
+  shelf price. iShopChangi is scraped in both modes (see table).
 
 ```sh
 .venv/bin/python -m hunt.run --out hunt-report.json --state hunt-state.json
@@ -100,7 +102,7 @@ files are gitignored.
 | PIVENE | Shopify products.json (all feed, 1158 products; wine-style titles caught by the distillery-name rule) | Done |
 | LMDW | WooCommerce Store API | Done |
 | KrisShop | Adobe Commerce GraphQL | Done — traveller/flight prices; home-delivery variant not returned |
-| iShopChangi | AEM search API | **Not done — browser-verified-only.** The search endpoint answers with a session cookie but returns no prices and ignores the search term; the traveller range needs a flight-linked session. |
+| iShopChangi | Search HTML (React SPA, two passes: Non-Traveller + Traveller, clean browser context per mode) | Done (synthetic fixture from verbatim rendered records; live markup unvalidated — first Fargate run validates) |
 | The Whisky Exchange | Search HTML | Done (synthetic fixture; live site is Cloudflare-challenged to curl, driver reports blocked) |
 | The Whisky World | Search HTML + product page (size) | Done |
 | ReserveBar | Sitemap + product-page JSON-LD | Done |
