@@ -413,7 +413,7 @@ async def run_once(fx, max_pages, paneco_url=None,
                 detail="sitemap failed to load"))
             notes.append("ReserveBar sitemap failed to load; no US "
                          "ReserveBar benchmarks this run.")
-        for term in chosen:
+        for term_no, term in enumerate(chosen, start=1):
             found, entry = await twe.search(pw, term, seen_at=stamp)
             twe_health.append(entry)
             prices_by_term.setdefault(term, []).extend(found)
@@ -428,6 +428,12 @@ async def run_once(fx, max_pages, paneco_url=None,
                     term, sitemap_urls=sitemap_urls, seen_at=stamp)
                 rb_health.append(entry)
                 prices_by_term.setdefault(term, []).extend(found)
+            if term_no % 25 == 0 or term_no == len(chosen):
+                # The 150-term loop took ~63 silent minutes in the
+                # slice-6 run; log progress so a crash check can see
+                # where the run is.
+                print("Overseas search: %d/%d terms"
+                      % (term_no, len(chosen)), flush=True)
         if twe_health:
             entry = aggregate_health(twe.RETAILER, twe_health)
             health.append(entry)
@@ -460,6 +466,9 @@ async def run_once(fx, max_pages, paneco_url=None,
                  % (BEDROCK_MODEL_ID,
                     "configured" if groq_fallback else "not configured"))
     llm_cache = name_cache if name_cache is not None else {}
+    cache_before = len(llm_cache)
+    print("Starting comparisons: name-cleaning via Bedrock %s"
+          % BEDROCK_MODEL_ID, flush=True)
     llm_used = 0
     comparisons = []
     for item in listings:
@@ -478,6 +487,14 @@ async def run_once(fx, max_pages, paneco_url=None,
             "name": item.name,
             **result.to_dict(),
         })
+    # The slice-6 run left no evidence the name-cleaning phase ran
+    # at all (no Bedrock/cache/LLM log lines before its crash), so
+    # log the usage here: calls made plus cache growth (entries
+    # include names that could not be cleaned).
+    print("Name-cleaning: %d LLM calls, %d new cache entries "
+          "(cache now holds %d)"
+          % (llm_used, len(llm_cache) - cache_before, len(llm_cache)),
+          flush=True)
     if llm_used >= max_llm_calls and max_llm_calls > 0:
         notes.append("LLM call budget (%d) exhausted; later ambiguous "
                      "matches stayed exact-only." % max_llm_calls)

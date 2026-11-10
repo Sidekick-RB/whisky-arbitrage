@@ -22,7 +22,12 @@ from dataclasses import dataclass
 from .models import listing_key
 
 REPORT_SCHEMA_VERSION = 1
-MAX_STATE_ENTRIES = 5000
+# Raised 5,000 -> 10,000 on 10 Nov 2026: the slice-6 validation run
+# crashed in diff_states before writing any report because the SG
+# listing count passed 5,000 once the iShopChangi (1,112 listings)
+# and Malt & Wine Asia fixes landed (~5,800 entries). The cap is
+# still a fixed bound; a 10,000-entry state file is ~4 MB in S3.
+MAX_STATE_ENTRIES = 10000
 MAX_REPORT_NOTES = 50
 
 

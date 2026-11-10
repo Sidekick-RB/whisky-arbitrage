@@ -93,6 +93,43 @@ class DiffTest(unittest.TestCase):
         self.assertEqual(diff["price_changes"], [])
 
 
+class StateCapTest(unittest.TestCase):
+    def _big_state(self, count):
+        assert 0 < count, "test state must be non-empty"
+        state = {}
+        for num in range(count):
+            key = "Paneco|test-bottle-%04d" % num
+            state[key] = _entry("Paneco", "test-bottle-%04d" % num,
+                                150.0 + num * 0.01)
+        assert len(state) == count, "test state must hold every entry"
+        return state
+
+    def test_six_thousand_entries_diff(self):
+        """10 Nov 2026: the slice-6 run crashed in diff_states
+        because the SG listing count passed the old 5,000 cap once
+        the iShopChangi and MWA fixes landed (~5,800 entries).
+        A 6,000-entry current state must diff without raising."""
+        current = self._big_state(6000)
+        diff = diff_states({}, current)
+        assert len(diff["new_listings"]) == 6000
+        assert diff["delistings"] == []
+
+    def test_six_thousand_entries_load(self):
+        """The same cap guards load_state; a 6,000-entry state file
+        from the fixed run must load for the next run's diff."""
+        state = self._big_state(6000)
+        handle = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8")
+        try:
+            json.dump(state, handle)
+            handle.close()
+            loaded = load_state(handle.name)
+            assert loaded is not None, "state file must load"
+            assert len(loaded) == 6000
+        finally:
+            os.unlink(handle.name)
+
+
 class ReportTest(unittest.TestCase):
     def _report(self):
         health = [ParserHealth(retailer="Paneco", pages_scanned=30,
