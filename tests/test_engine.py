@@ -315,5 +315,26 @@ class WilletTest(unittest.TestCase):
         self.assertIn(note, result.notes)
 
 
+class DearLocalTest(unittest.TestCase):
+    """Regression: the 01:38 IST 10 Nov 2026 run crashed on a local bottle
+    more than twice as dear per litre as the overseas benchmark. A saving
+    below -100% is real data, never an error."""
+
+    def test_saving_below_minus_100_is_not_a_deal(self):
+        local = make_listing(700.0, canonical="dear-bottle",
+                             name="Dear Bottle 700ml")
+        overseas = [make_overseas("The Whisky World", "UK", "GBP",
+                                   100.0, 700)]
+        result = compare(local, overseas, FX_9NOV, as_of="2026-11-09")
+        assert result.saving_pct is not None and result.saving_pct < -100.0
+        assert result.verdict == "not-a-deal"
+        self.assertLess(result.saving_pct, -100.0)
+        self.assertEqual(result.verdict, "not-a-deal")
+
+    def test_per_litre_large_bottle_below_bottle_price(self):
+        assert per_litre(100.0, 1750) < 100.0
+        self.assertAlmostEqual(per_litre(100.0, 1750), 57.14, places=2)
+
+
 if __name__ == "__main__":
     unittest.main()

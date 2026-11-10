@@ -31,7 +31,6 @@ def per_litre(price, size_ml):
         return None
     result = price / (size_ml / 1000.0)
     assert result > 0, "per-litre price must be positive"
-    assert result >= price, "per-litre must exceed the bottle price"
     return result
 
 
@@ -138,7 +137,9 @@ def _saving_vs_overseas(local, overseas, fx):
     local_pl = per_litre(local.price_sgd, local.size_ml)
     assert local_pl is not None and local_pl > 0, "local per-litre known"
     saving = (best_per_litre - local_pl) / best_per_litre * 100.0
-    assert saving > -100.0, "saving cannot exceed -100%"
+    # Saving is unbounded below: a local bottle more than twice as dear
+    # per litre as the overseas benchmark scores below -100%. That is
+    # real data (a steep local markup), never an error.
     return saving, best, best_per_litre
 
 
@@ -148,7 +149,7 @@ def _result(verdict, local, saving, local_per_litre, best,
     assert verdict in ("qualifier", "close-find", "not-a-deal",
                        "unverified", "unavailable")
     assert local.price_sgd > 0, "local price must be positive"
-    assert saving is None or -100.0 < saving < 100.0
+    assert saving is None or saving < 100.0, "saving below 100%"
     result = Comparison(
         verdict=verdict, saving_pct=saving,
         local_price_sgd=local.price_sgd, local_per_litre=local_per_litre,
