@@ -51,6 +51,7 @@ from .parsers import (
 from .parsers.base import MAX_PAGES
 from .report import (
     ParserHealth,
+    best_price_per_bottle,
     build_report,
     diff_states,
     load_state,
@@ -485,6 +486,7 @@ async def run_once(fx, max_pages, paneco_url=None,
             "retailer": item.retailer,
             "canonical": item.canonical,
             "name": item.name,
+            "traveller_only": bool(item.traveller_only),
             **result.to_dict(),
         })
     # The slice-6 run left no evidence the name-cleaning phase ran
@@ -554,8 +556,9 @@ def main(argv=None):
     state = build_state(listings)
     previous = load_state(args.state) or {}
     diff = diff_states(previous, state)
+    best_prices = best_price_per_bottle(listings, comparisons)
     report = build_report(run_id, run_at, fx, comparisons, health, diff,
-                          notes)
+                          notes, best_prices=best_prices)
     assert write_report(report, args.out), "report write failed"
     assert write_json_file(state, args.state), "state write failed"
     name_cache = prune_name_cache(name_cache)
@@ -589,6 +592,8 @@ def main(argv=None):
     print("Qualifiers: %d  Close finds: %d  Unverified: %d"
           % (len(qualifiers), len(close_finds),
              len([c for c in comparisons if c["verdict"] == "unverified"])),
+          flush=True)
+    print("Best price per bottle: %d bottles" % len(best_prices),
           flush=True)
     print("New: %d  Price changes: %d  Stock changes: %d  Delisted: %d"
           % (len(diff["new_listings"]), len(diff["price_changes"]),

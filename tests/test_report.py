@@ -8,6 +8,7 @@ import unittest
 from hunt.fx import fixed_rates
 from hunt.report import (
     ParserHealth,
+    best_price_per_bottle,
     build_report,
     diff_states,
     load_state,
@@ -128,6 +129,126 @@ class StateCapTest(unittest.TestCase):
             assert len(loaded) == 6000
         finally:
             os.unlink(handle.name)
+
+
+def _listing(retailer, canonical, price, in_stock=True, traveller=False,
+             size_ml=700, size_verified=True):
+    assert price > 0, "test price must be positive"
+    return Listing(
+        retailer=retailer, name=canonical, canonical=canonical,
+        size_ml=size_ml, size_verified=size_verified, price_sgd=price,
+        in_stock=in_stock, traveller_only=traveller,
+        eligibility="Singapore delivery", edition="", batch="",
+        url="https://example.com/p/" + canonical,
+        seen_at="2026-11-02T00:00:00+00:00")
+
+
+def _comparison(retailer, canonical, verdict, saving, traveller=False):
+    return {"retailer": retailer, "canonical": canonical,
+            "traveller_only": traveller, "verdict": verdict,
+            "saving_pct": saving}
+
+
+class BestPriceTest(unittest.TestCase):
+    def test_cheapest_across_retailers_wins(self):
+        """The rollup keeps the cheapest row per bottle, with that
+        row's verdict and saving attached."""
+        listings = [
+            _listing("Paneco", "royal-brackla-18yr", 239.95),
+            _listing("iShopChangi", "royal-brackla-18yr", 165.00),
+            _listing("Asher", "royal-brackla-18yr", 199.00),
+        ]
+        comparisons = [
+            _comparison("Paneco", "royal-brackla-18yr", "not-a-deal",
+                        -5.0),
+            _comparison("iShopChangi", "royal-brackla-18yr",
+                        "qualifier", 30.0),
+            _comparison("Asher", "royal-brackla-18yr", "close-find",
+                        20.0),
+        ]
+        rows = best_price_per_bottle(listings, comparisons)
+        assert len(rows) == 1
+        row = rows[0]
+        self.assertEqual(row["retailer"], "iShopChangi")
+        self.assertEqual(row["price_sgd"], 165.00)
+        self.assertEqual(row["verdict"], "qualifier")
+        self.assertEqual(row["saving_pct"], 30.0)
+        self.assertFalse(row["traveller_only"])
+
+    def test_traveller_mode_competes(self):
+        """Brackla 12 at iShopChangi: the S$100 traveller row beats
+        the S$144 non-traveller row; both modes are candidates."""
+        listings = [
+            _listing("iShopChangi", "royal-brackla-12yr", 144.00),
+            _listing("iShopChangi", "royal-brackla-12yr", 100.00,
+                     traveller=True),
+        ]
+        comparisons = [
+            _comparison("iShopChangi", "royal-brackla-12yr",
+                        "not-a-deal", 0.0),
+            _comparison("iShopChangi", "royal-brackla-12yr",
+                        "qualifier", 25.0, traveller=True),
+        ]
+        rows = best_price_per_bottle(listings, comparisons)
+        assert len(rows) == 1
+        self.assertTrue(rows[0]["traveller_only"])
+        self.assertEqual(rows[0]["price_sgd"], 100.00)
+        self.assertEqual(rows[0]["verdict"], "qualifier")
+
+    def test_out_of_scope_rows_excluded(self):
+        """Out-of-stock, under S$100, unsized and unverified-size
+        rows never win, even when cheapest."""
+        listings = [
+            _listing("Asher", "glenlivet-18yr", 120.00, in_stock=False),
+            _listing("Paneco", "glenlivet-18yr", 90.00),
+            _listing("TLC", "glenlivet-18yr", 110.00, size_ml=None),
+            _listing("LMDW", "glenlivet-18yr", 105.00,
+                     size_verified=False),
+            _listing("Cellarbration", "glenlivet-18yr", 148.00),
+        ]
+        comparisons = [
+            _comparison("Cellarbration", "glenlivet-18yr", "close-find",
+                        24.9),
+        ]
+        rows = best_price_per_bottle(listings, comparisons)
+        assert len(rows) == 1
+        self.assertEqual(rows[0]["retailer"], "Cellarbration")
+        self.assertEqual(rows[0]["price_sgd"], 148.00)
+
+    def test_sorted_by_saving_then_canonical(self):
+        """Best saving first; unverified (no saving) last; one row
+        per bottle."""
+        listings = [
+            _listing("Paneco", "ballantines-23yr", 199.95),
+            _listing("Asher", "glenlivet-18yr", 148.00),
+            _listing("TLC", "jack-daniels-10yr", 129.00),
+        ]
+        comparisons = [
+            _comparison("Paneco", "ballantines-23yr", "not-a-deal",
+                        16.7),
+            _comparison("Asher", "glenlivet-18yr", "close-find", 24.9),
+            _comparison("TLC", "jack-daniels-10yr", "unverified", None),
+        ]
+        rows = best_price_per_bottle(listings, comparisons)
+        assert len(rows) == 3
+        self.assertEqual([row["canonical"] for row in rows],
+                         ["glenlivet-18yr", "ballantines-23yr",
+                          "jack-daniels-10yr"])
+
+    def test_tie_break_is_deterministic(self):
+        """Same price at two retailers: the retailer name decides,
+        so the rollup is stable run to run."""
+        listings = [
+            _listing("TLC", "bowmore-18yr", 243.00),
+            _listing("Asher", "bowmore-18yr", 243.00),
+        ]
+        comparisons = [
+            _comparison("TLC", "bowmore-18yr", "close-find", 24.0),
+            _comparison("Asher", "bowmore-18yr", "close-find", 24.0),
+        ]
+        rows = best_price_per_bottle(listings, comparisons)
+        assert len(rows) == 1
+        self.assertEqual(rows[0]["retailer"], "Asher")
 
 
 class ReportTest(unittest.TestCase):

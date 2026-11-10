@@ -19,7 +19,7 @@ import json
 import os
 from dataclasses import dataclass
 
-from .models import listing_key
+from .models import MIN_HUNT_PRICE_SGD, listing_key
 
 REPORT_SCHEMA_VERSION = 1
 # Raised 5,000 -> 10,000 on 10 Nov 2026: the slice-6 validation run
@@ -163,8 +163,73 @@ def diff_states(previous, current):
     return result
 
 
-def build_report(run_id, run_at, fx, comparisons, health, diff, notes):
-    """Assemble the weekly report dict (schema version 1)."""
+def best_price_per_bottle(listings, comparisons):
+    """One row per canonical bottle: its cheapest in-scope listing.
+
+    In scope is the hunt's scope: in stock, S$100 or more, verified
+    size. Traveller and non-traveller modes of the same bottle at
+    one retailer are separate listings and both compete, so the
+    cheapest mode wins on its own price. The row carries the winning
+    listing's verdict and saving, so the rollup reads as "cheapest
+    price, and whether it is a deal". Rows sort by saving (best
+    first, unverified last), then canonical. One row per canonical,
+    never more.
+    """
+    assert isinstance(listings, list), "listings must be a list"
+    assert isinstance(comparisons, list), "comparisons must be a list"
+    verdicts = {}
+    for entry in comparisons:
+        assert entry.get("retailer"), "comparison must name a retailer"
+        assert entry.get("canonical"), "comparison must name a bottle"
+        key = (entry["retailer"], entry["canonical"],
+               bool(entry.get("traveller_only", False)))
+        verdicts[key] = (entry.get("verdict"),
+                         entry.get("saving_pct"))
+    best = {}
+    for listing in listings:
+        assert listing.price_sgd > 0, "listing price must be positive"
+        if not listing.in_stock:
+            continue
+        if listing.price_sgd < MIN_HUNT_PRICE_SGD:
+            continue
+        if listing.size_ml is None or not listing.size_verified:
+            continue
+        key = (listing.retailer, listing.canonical,
+               bool(listing.traveller_only))
+        verdict, saving = verdicts.get(key, (None, None))
+        row = {
+            "canonical": listing.canonical,
+            "price_sgd": listing.price_sgd,
+            "retailer": listing.retailer,
+            "traveller_only": bool(listing.traveller_only),
+            "url": listing.url,
+            "verdict": verdict,
+            "saving_pct": saving,
+        }
+        current = best.get(listing.canonical)
+        if current is None or (row["price_sgd"], row["retailer"],
+                               row["traveller_only"]) < (
+                current["price_sgd"], current["retailer"],
+                current["traveller_only"]):
+            best[listing.canonical] = row
+    rows = list(best.values())
+    assert len(rows) == len(best), "one row per bottle required"
+    assert all(row["price_sgd"] >= MIN_HUNT_PRICE_SGD for row in rows)
+    rows.sort(key=lambda row: (
+        row["saving_pct"] is None,
+        -(row["saving_pct"] or 0.0),
+        row["canonical"]))
+    return rows
+
+
+def build_report(run_id, run_at, fx, comparisons, health, diff, notes,
+                 best_prices=None):
+    """Assemble the weekly report dict (schema version 1).
+
+    best_prices is the optional per-bottle cheapest-row rollup from
+    best_price_per_bottle(); an additive field, so the schema
+    version stays 1 and older readers ignore it.
+    """
     assert run_id, "run_id must be non-empty"
     assert run_at, "run_at must be non-empty"
     assert fx.gbp_to_sgd > 0 and fx.usd_to_sgd > 0
@@ -172,6 +237,8 @@ def build_report(run_id, run_at, fx, comparisons, health, diff, notes):
     assert isinstance(health, list), "health must be a list"
     assert isinstance(diff, dict), "diff must be a dict"
     assert len(notes) <= MAX_REPORT_NOTES, "too many report notes"
+    assert best_prices is None or isinstance(best_prices, list), (
+        "best prices must be a list or None")
     report = {
         "schema_version": REPORT_SCHEMA_VERSION,
         "run_id": run_id,
@@ -183,6 +250,7 @@ def build_report(run_id, run_at, fx, comparisons, health, diff, notes):
             "as_of": fx.as_of,
         },
         "comparisons": comparisons,
+        "best_prices": list(best_prices) if best_prices else [],
         "price_changes": diff.get("price_changes", []),
         "stock_changes": diff.get("stock_changes", []),
         "delistings": diff.get("delistings", []),
