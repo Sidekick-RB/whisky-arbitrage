@@ -8,7 +8,9 @@ answers with a canned Converse response. One env-gated live test
 runs only when GROQ_API_KEY is set.
 """
 
+import contextlib
 import http.server
+import io
 import json
 import os
 import threading
@@ -339,6 +341,65 @@ class BedrockTest(unittest.TestCase):
                        "palo-cortado-sherry-cask-finish")
         self.assertEqual(
             key, "royal-brackla-18yr-palo-cortado-sherry-cask-finish")
+
+
+class FirstFailureLoggingTest(unittest.TestCase):
+    def setUp(self):
+        names._reset_logged_failures()
+
+    def _captured(self, func):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            result = func()
+        return result, buf.getvalue()
+
+    def test_bedrock_error_logs_once(self):
+        """Slice 11: 376 Bedrock calls, 0 succeeded, and the log
+        said nothing about why. The first failure must name the
+        exception; later ones stay silent."""
+        client = _StubBedrockClient(error=RuntimeError("denied"))
+        _, out1 = self._captured(lambda: clean_name_bedrock(
+            "Royal Brackla 18", client=client))
+        assert "Bedrock clean failed" in out1
+        assert "denied" in out1
+        _, out2 = self._captured(lambda: clean_name_bedrock(
+            "Royal Brackla 18", client=client))
+        assert out1.count("Bedrock clean failed") == 1
+        assert "Bedrock clean failed" not in out2
+        self.assertIn("denied", out1)
+
+    def test_bedrock_non_json_answer_logs(self):
+        client = _StubBedrockClient(text="not json at all")
+        result, out = self._captured(lambda: clean_name_bedrock(
+            "Royal Brackla 18", client=client))
+        assert result is None
+        assert "answer was not JSON" in out
+        self.assertIn("answer was not JSON", out)
+
+    def test_bedrock_validation_failure_logs(self):
+        text = json.dumps({"distillery": 123, "age_years": 18,
+                           "edition": "", "is_willet_rye": False})
+        client = _StubBedrockClient(text=text)
+        result, out = self._captured(lambda: clean_name_bedrock(
+            "Royal Brackla 18", client=client))
+        assert result is None
+        assert "failed validation" in out
+        self.assertIn("failed validation", out)
+
+    def test_groq_http_error_logs_status(self):
+        """A 429 (rate limit) and a 401 (bad key) need different
+        fixes, so the first non-200 must print its status."""
+        server, thread, url = _run_stub(status=429,
+                                        body={"error": "slow down"})
+        try:
+            result, out = self._captured(lambda: clean_name(
+                "Royal Brackla 18", api_key="test-key", base_url=url))
+        finally:
+            _stop_stub(server, thread)
+        assert result is None
+        assert "Groq clean failed" in out
+        assert "429" in out
+        self.assertIn("429", out)
 
 
 @unittest.skipUnless("GROQ_API_KEY" in os.environ,

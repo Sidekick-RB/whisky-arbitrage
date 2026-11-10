@@ -51,6 +51,27 @@ CLEAN_SYSTEM = (
     "is_willet_rye is true only for Willet rye whiskey."
 )
 
+# Kinds whose first cleaner failure has already been logged this
+# process. Both cleaners swallow failures and return None by design,
+# so without this the run cannot tell a denied model from a bad
+# answer. The Fargate task is one process per run, so one line per
+# kind is once per run. Diagnostic-only state; tests reset it.
+_LOGGED_FAILURES = set()
+
+
+def _log_first_failure(kind, message):
+    """Print one diagnostic line for a cleaner's first failure."""
+    assert kind and message, "kind and message required"
+    if kind in _LOGGED_FAILURES:
+        return
+    _LOGGED_FAILURES.add(kind)
+    print("%s clean failed: %s" % (kind, message), flush=True)
+
+
+def _reset_logged_failures():
+    """Clear the first-failure log state. Test seam only."""
+    _LOGGED_FAILURES.clear()
+
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
     """Refuse redirects; the endpoint is fixed and verified."""
@@ -60,7 +81,11 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def _post_json(base_url, api_key, payload):
-    """POST a JSON payload. Returns (status, parsed dict) or (None, {})."""
+    """POST a JSON payload. Returns (status, parsed dict).
+
+    An HTTP error returns its status code with {}; a network
+    failure returns (None, {}). The caller needs the status to
+    tell a rate limit (429) from a bad key (401)."""
     assert isinstance(base_url, str) and base_url.startswith("http")
     assert isinstance(api_key, str) and api_key, "API key required"
     assert isinstance(payload, dict) and payload, "payload required"
@@ -78,6 +103,8 @@ def _post_json(base_url, api_key, payload):
                 request, timeout=TIMEOUT_S) as resp:
             assert resp.status == 200, "Groq did not return 200"
             text = resp.read(MAX_BODY_BYTES).decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        return exc.code, {}
     except Exception:
         return None, {}
     assert text, "Groq response must be non-empty"
@@ -217,9 +244,21 @@ def clean_name_bedrock(name, model_id=None, region=None, client=None):
                        if isinstance(part, dict))
         assert text.strip(), "Converse answer must be non-empty"
         result = _extract_json_object(text)
-    except Exception:
+        if result is None:
+            _log_first_failure(
+                "Bedrock",
+                "answer was not JSON: %r" % text.strip()[:200])
+            return None
+    except Exception as exc:
+        _log_first_failure(
+            "Bedrock", "%s: %s" % (type(exc).__name__, exc))
         return None
-    return _validate_terms(result)
+    validated = _validate_terms(result)
+    if validated is None:
+        _log_first_failure(
+            "Bedrock",
+            "answer parsed but failed validation: %r" % (result,))
+    return validated
 
 
 def clean_name(name, api_key=None, base_url=API_BASE):
@@ -253,8 +292,12 @@ def clean_name(name, api_key=None, base_url=API_BASE):
     status, data = _post_json(base_url, key, payload)
     assert status is None or isinstance(status, int)
     if status != 200:
+        _log_first_failure("Groq", "POST returned HTTP %s" % status)
         return None
     cleaned = parse_clean_response(data)
+    if cleaned is None:
+        _log_first_failure(
+            "Groq", "200 response did not parse into terms")
     assert cleaned is None or isinstance(cleaned, dict)
     return cleaned
 
