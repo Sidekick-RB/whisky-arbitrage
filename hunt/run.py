@@ -1,4 +1,4 @@
-"""Weekly hunt runner (slice 4: all SG retailers + overseas comparisons).
+"""Weekly hunt runner (slice 5: all SG retailers + overseas comparisons).
 
 Runs every SG parser (Paneco, Cellarbration, TLC, Spirited, Tipsy
 Topsy, Asher, PIVENE, LMDW, Malt & Wine Asia, KrisShop, iShopChangi),
@@ -9,7 +9,7 @@ only when an exact canonical match fails, and only while the call
 budget lasts. Blocked overseas retailers (Master of Malt, Wine.com,
 Total Wine) are probed once per run and reported as blocked, never
 as prices. iShopChangi is scraped in both modes (Non-Traveller and
-Traveller), each in a fresh browser context; a bottle in both modes
+Traveller) via its /bin search JSON API; a bottle in both modes
 yields two listings, one per mode. Promo codes are not applied in
 this slice (codes=()); the effective price is the shelf price.
 Never purchases, never adds to cart, never tests a promo code.
@@ -279,7 +279,8 @@ async def _scrape_sg_urllib(stamp):
                              (pivene.scrape, pivene.RETAILER),
                              (lmdw.scrape, lmdw.RETAILER),
                              (maltwineasia.scrape, maltwineasia.RETAILER),
-                             (krisshop.scrape_whisky, krisshop.RETAILER)):
+                             (krisshop.scrape_whisky, krisshop.RETAILER),
+                             (ishopchangi.scrape, ishopchangi.RETAILER)):
         try:
             found, entry = await scrape(seen_at=stamp)
         except Exception as exc:
@@ -332,13 +333,6 @@ async def run_once(fx, max_pages, paneco_url=None,
             found, entry = await cellarbration.scrape(pw, seen_at=stamp)
         except Exception as exc:
             found, entry = [], _error_health(cellarbration.RETAILER, exc)
-        listings.extend(found)
-        health.append(entry)
-        _log_parser(entry)
-        try:
-            found, entry = await ishopchangi.scrape(pw, seen_at=stamp)
-        except Exception as exc:
-            found, entry = [], _error_health(ishopchangi.RETAILER, exc)
         listings.extend(found)
         health.append(entry)
         _log_parser(entry)

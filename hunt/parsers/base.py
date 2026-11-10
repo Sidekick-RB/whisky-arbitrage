@@ -59,13 +59,18 @@ def detect_bot_wall(html):
     return None
 
 
-def fetch_json(url):
+def fetch_json(url, headers=None):
     """GET a JSON URL with a browser User-Agent. Returns the parsed
     JSON value (dict or list), or None on any failure (HTTP error,
-    non-JSON body, timeout). A None never becomes a price; the caller
-    records it as an error."""
+    non-JSON body, timeout). Extra headers (e.g. a Referer some
+    endpoints require) are merged over the default User-Agent. A None
+    never becomes a price; the caller records it as an error."""
     assert isinstance(url, str) and url.startswith("http")
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    assert headers is None or isinstance(headers, dict)
+    merged = {"User-Agent": USER_AGENT}
+    if headers:
+        merged.update(headers)
+    request = urllib.request.Request(url, headers=merged)
     try:
         with urllib.request.urlopen(request, timeout=30) as response:
             assert response.status == 200, "fetch must be HTTP 200"

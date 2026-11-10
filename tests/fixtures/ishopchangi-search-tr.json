@@ -1,0 +1,617 @@
+{
+ "pagination": {
+  "currentPage": 0,
+  "pageSize": 48,
+  "totalPages": 2,
+  "totalResults": 95,
+  "sort": "popularity"
+ },
+ "products": [
+  {
+   "inStock": true,
+   "changi1st": false,
+   "cagODDEligible": false,
+   "sellingFast": false,
+   "onlyFewLeft": false,
+   "eligibleForSameDayDelivery": false,
+   "eligibleForNextDayDelivery": false,
+   "cagGiftWrapping": false,
+   "oddImagePath": "/content/dam/cagishop/icons/on-demand-delivery-logo.png",
+   "multidimensional": false,
+   "newProduct": false,
+   "exclusive": true,
+   "variant": false,
+   "promo": false,
+   "staffExclusive": false,
+   "staffPrice": false,
+   "gstAbsorbed": false,
+   "from": false,
+   "manufacturer": "ROYAL BRACKLA",
+   "url": "/en/product/royal-brackla-18-year-old-single-malt-scotch-whisky-700ml-46--mp00519659",
+   "imageUrl": "https://changiairport.scene7.com/is/image/changiairport/mp00519660-1-royal-brackla-1756190715512",
+   "loveSG": false,
+   "code": "mp00519659",
+   "name": "ROYAL BRACKLA 18 Year Old Single Malt Scotch Whisky 700ML 46%",
+   "locale": "en",
+   "variantCount": 1,
+   "variantLabel": "Volume",
+   "price": {
+    "currencyIso": "SGD",
+    "formattedValue": "S$165.00",
+    "priceType": "BUY",
+    "value": "165.00"
+   },
+   "originPrice": {
+    "currencyIso": "SGD",
+    "formattedValue": "S$218.00",
+    "priceType": "BUY",
+    "value": "218.00"
+   },
+   "discountPrice": {
+    "currencyIso": "SGD",
+    "formattedValue": "S$165.00",
+    "priceType": "BUY",
+    "value": "165.00"
+   },
+   "zhPrice": {
+    "currencyIso": "CNY",
+    "formattedValue": "\u00a5858.00",
+    "priceType": "BUY",
+    "value": "858.00"
+   },
+   "displayPriority": 0,
+   "excludeCagPromo": false,
+   "featuredProductImages": [
+    "https://changiairport.scene7.com/is/image/changiairport/mp00519660-2-royal-brackla-1756190715520"
+   ],
+   "immediateBrandName": [
+    "ROYAL BRACKLA"
+   ],
+   "nameInEnglish": "ROYAL-BRACKLA-18-Year-Old-Single-Malt-Scotch-Whisky-700ML-46-",
+   "productDisplayName": "18 Year Old Single Malt Scotch Whisky 700ML 46%",
+   "swatchImageURLs": [],
+   "potentialPromotionLabels": [
+    "24.31% Off"
+   ],
+   "productLabels": [
+    {
+     "group": "A",
+     "count": 0,
+     "label": [
+      {
+       "key": "potentialPromotions",
+       "value": "24% Off"
+      }
+     ],
+     "swatchImages": []
+    },
+    {
+     "group": "D",
+     "count": 0,
+     "label": [
+      {
+       "key": "exclusive",
+       "value": "Exclusive"
+      }
+     ],
+     "swatchImages": []
+    }
+   ],
+   "volumePricesFlag": false,
+   "gwpImageUrl": "",
+   "eligibleForBcrs": false
+  },
+  {
+   "inStock": true,
+   "changi1st": false,
+   "cagODDEligible": false,
+   "sellingFast": false,
+   "onlyFewLeft": false,
+   "eligibleForSameDayDelivery": false,
+   "eligibleForNextDayDelivery": false,
+   "cagGiftWrapping": false,
+   "oddImagePath": "/content/dam/cagishop/icons/on-demand-delivery-logo.png",
+   "multidimensional": false,
+   "newProduct": false,
+   "exclusive": false,
+   "variant": false,
+   "promo": false,
+   "staffExclusive": false,
+   "staffPrice": false,
+   "gstAbsorbed": false,
+   "from": false,
+   "manufacturer": "ROYAL BRACKLA",
+   "url": "/en/product/royal-brackla-12-year-old-1000ml-46--mp00088806",
+   "imageUrl": "https://changiairport.scene7.com/is/image/changiairport/mp00088807-1-royal-brackla-1756190715498",
+   "loveSG": false,
+   "code": "mp00088806",
+   "name": "ROYAL BRACKLA 12 YEAR OLD 1000ML 46%",
+   "locale": "en",
+   "variantCount": 1,
+   "variantLabel": "Volume",
+   "price": {
+    "currencyIso": "SGD",
+    "formattedValue": "S$100.00",
+    "priceType": "BUY",
+    "value": "100.00"
+   },
+   "originPrice": {
+    "currencyIso": "SGD",
+    "formattedValue": "S$119.00",
+    "priceType": "BUY",
+    "value": "119.00"
+   },
+   "discountPrice": {
+    "currencyIso": "SGD",
+    "formattedValue": "S$100.00",
+    "priceType": "BUY",
+    "value": "100.00"
+   },
+   "zhPrice": {
+    "currencyIso": "CNY",
+    "formattedValue": "\u00a5520.00",
+    "priceType": "BUY",
+    "value": "520.00"
+   },
+   "displayPriority": 0,
+   "excludeCagPromo": false,
+   "featuredProductImages": [
+    "https://changiairport.scene7.com/is/image/changiairport/mp00088807-2-royal-brackla-1756190715605"
+   ],
+   "immediateBrandName": [
+    "ROYAL BRACKLA"
+   ],
+   "nameInEnglish": "ROYAL-BRACKLA-12-YEAR-OLD-1000ML-46-",
+   "productDisplayName": "12 YEAR OLD 1000ML 46%",
+   "swatchImageURLs": [],
+   "potentialPromotionLabels": [
+    "15.97% Off"
+   ],
+   "productLabels": [
+    {
+     "group": "A",
+     "count": 0,
+     "label": [
+      {
+       "key": "potentialPromotions",
+       "value": "15% Off"
+      }
+     ],
+     "swatchImages": []
+    }
+   ],
+   "volumePricesFlag": false,
+   "gwpImageUrl": "",
+   "eligibleForBcrs": false
+  },
+  {
+   "inStock": true,
+   "changi1st": false,
+   "cagODDEligible": false,
+   "sellingFast": false,
+   "onlyFewLeft": false,
+   "eligibleForSameDayDelivery": false,
+   "eligibleForNextDayDelivery": false,
+   "cagGiftWrapping": false,
+   "oddImagePath": "/content/dam/cagishop/icons/on-demand-delivery-logo.png",
+   "multidimensional": false,
+   "newProduct": false,
+   "exclusive": true,
+   "variant": false,
+   "promo": false,
+   "staffExclusive": false,
+   "staffPrice": false,
+   "gstAbsorbed": false,
+   "from": false,
+   "manufacturer": "ROYAL BRACKLA",
+   "url": "/en/product/royal-brackla-21-year-old-single-malt-scotch-whisky-700ml-46--mp00515687",
+   "imageUrl": "https://changiairport.scene7.com/is/image/changiairport/mp00515688-1-royal-brackla-1756278020603",
+   "loveSG": false,
+   "code": "mp00515687",
+   "name": "ROYAL BRACKLA 21 Year Old Single Malt Scotch Whisky 700ML 46%",
+   "locale": "en",
+   "variantCount": 1,
+   "variantLabel": "Volume",
+   "price": {
+    "currencyIso": "SGD",
+    "formattedValue": "S$330.00",
+    "priceType": "BUY",
+    "value": "330.00"
+   },
+   "originPrice": {
+    "currencyIso": "SGD",
+    "formattedValue": "S$368.00",
+    "priceType": "BUY",
+    "value": "368.00"
+   },
+   "discountPrice": {
+    "currencyIso": "SGD",
+    "formattedValue": "S$330.00",
+    "priceType": "BUY",
+    "value": "330.00"
+   },
+   "zhPrice": {
+    "currencyIso": "CNY",
+    "formattedValue": "\u00a51,716.00",
+    "priceType": "BUY",
+    "value": "1716.00"
+   },
+   "displayPriority": 0,
+   "excludeCagPromo": false,
+   "featuredProductImages": [
+    "https://changiairport.scene7.com/is/image/changiairport/mp00515688-2-royal-brackla-1756278020617"
+   ],
+   "immediateBrandName": [
+    "ROYAL BRACKLA"
+   ],
+   "nameInEnglish": "ROYAL-BRACKLA-21-Year-Old-Single-Malt-Scotch-Whisky-700ML-46-",
+   "productDisplayName": "21 Year Old Single Malt Scotch Whisky 700ML 46%",
+   "swatchImageURLs": [],
+   "potentialPromotionLabels": [
+    "10.33% Off"
+   ],
+   "productLabels": [
+    {
+     "group": "A",
+     "count": 0,
+     "label": [
+      {
+       "key": "potentialPromotions",
+       "value": "10% Off"
+      }
+     ],
+     "swatchImages": []
+    },
+    {
+     "group": "D",
+     "count": 0,
+     "label": [
+      {
+       "key": "exclusive",
+       "value": "Exclusive"
+      }
+     ],
+     "swatchImages": []
+    }
+   ],
+   "volumePricesFlag": false,
+   "gwpImageUrl": "",
+   "eligibleForBcrs": false
+  },
+  {
+   "inStock": true,
+   "changi1st": false,
+   "cagODDEligible": false,
+   "sellingFast": false,
+   "onlyFewLeft": false,
+   "eligibleForSameDayDelivery": false,
+   "eligibleForNextDayDelivery": false,
+   "cagGiftWrapping": false,
+   "oddImagePath": "/content/dam/cagishop/icons/on-demand-delivery-logo.png",
+   "multidimensional": true,
+   "newProduct": false,
+   "exclusive": false,
+   "variant": false,
+   "promo": false,
+   "staffExclusive": false,
+   "staffPrice": false,
+   "gstAbsorbed": false,
+   "from": true,
+   "manufacturer": "GUERLAIN",
+   "url": "/en/product/guerlain-abeille-royale-youth-watery-oil-serum-mp00884810",
+   "imageUrl": "https://changiairport.scene7.com/is/image/changiairport/mp00884811-1-guerlain-1779353181498",
+   "loveSG": false,
+   "code": "mp00884810",
+   "name": "GUERLAIN Abeille Royale Youth Watery Oil Serum",
+   "locale": "en",
+   "variantCount": 2,
+   "variantLabel": "Volume",
+   "price": {
+    "currencyIso": "SGD",
+    "formattedValue": "S$189.40",
+    "priceType": "BUY",
+    "value": "189.40"
+   },
+   "originPrice": {
+    "currencyIso": "SGD",
+    "formattedValue": "S$189.40",
+    "priceType": "BUY",
+    "value": "189.40"
+   },
+   "discountPrice": {
+    "currencyIso": "SGD",
+    "formattedValue": "S$0.00",
+    "priceType": "BUY",
+    "value": "0.00"
+   },
+   "zhPrice": {
+    "currencyIso": "CNY",
+    "formattedValue": "\u00a5984.88",
+    "priceType": "BUY",
+    "value": "984.88"
+   },
+   "displayPriority": 0,
+   "excludeCagPromo": false,
+   "featuredProductImages": [
+    "https://changiairport.scene7.com/is/image/changiairport/mp00884811-2-guerlain-1779353181517"
+   ],
+   "immediateBrandName": [
+    "GUERLAIN"
+   ],
+   "nameInEnglish": "GUERLAIN-Abeille-Royale-Youth-Watery-Oil-Serum",
+   "productDisplayName": "Abeille Royale Youth Watery Oil Serum",
+   "swatchImageURLs": [],
+   "potentialPromotionLabels": [],
+   "productLabels": [
+    {
+     "group": "B",
+     "count": 1,
+     "label": [
+      {
+       "key": "volume",
+       "value": "Volume"
+      }
+     ],
+     "swatchImages": []
+    }
+   ],
+   "volumePricesFlag": false,
+   "gwpImageUrl": "",
+   "eligibleForBcrs": false
+  },
+  {
+   "inStock": false,
+   "changi1st": false,
+   "cagODDEligible": false,
+   "sellingFast": false,
+   "onlyFewLeft": false,
+   "eligibleForSameDayDelivery": false,
+   "eligibleForNextDayDelivery": false,
+   "cagGiftWrapping": false,
+   "oddImagePath": "/content/dam/cagishop/icons/on-demand-delivery-logo.png",
+   "multidimensional": false,
+   "newProduct": false,
+   "exclusive": true,
+   "variant": false,
+   "promo": false,
+   "staffExclusive": false,
+   "staffPrice": false,
+   "gstAbsorbed": false,
+   "from": false,
+   "manufacturer": "ROYAL BRACKLA",
+   "url": "/en/product/royal-brackla-18-year-old-single-malt-scotch-whisky-700ml-46--mp00519660",
+   "imageUrl": "https://changiairport.scene7.com/is/image/changiairport/mp00519660-1-royal-brackla-1756190715512",
+   "loveSG": false,
+   "code": "mp00519660",
+   "name": "ROYAL BRACKLA 18 Year Old Single Malt Scotch Whisky 700ML 46%",
+   "locale": "en",
+   "variantCount": 1,
+   "variantLabel": "Volume",
+   "price": {
+    "currencyIso": "SGD",
+    "formattedValue": "S$165.00",
+    "priceType": "BUY",
+    "value": "165.00"
+   },
+   "originPrice": {
+    "currencyIso": "SGD",
+    "formattedValue": "S$218.00",
+    "priceType": "BUY",
+    "value": "218.00"
+   },
+   "discountPrice": {
+    "currencyIso": "SGD",
+    "formattedValue": "S$165.00",
+    "priceType": "BUY",
+    "value": "165.00"
+   },
+   "zhPrice": {
+    "currencyIso": "CNY",
+    "formattedValue": "\u00a5858.00",
+    "priceType": "BUY",
+    "value": "858.00"
+   },
+   "displayPriority": 0,
+   "excludeCagPromo": false,
+   "featuredProductImages": [
+    "https://changiairport.scene7.com/is/image/changiairport/mp00519660-2-royal-brackla-1756190715520"
+   ],
+   "immediateBrandName": [
+    "ROYAL BRACKLA"
+   ],
+   "nameInEnglish": "ROYAL-BRACKLA-18-Year-Old-Single-Malt-Scotch-Whisky-700ML-46-",
+   "productDisplayName": "18 Year Old Single Malt Scotch Whisky 700ML 46%",
+   "swatchImageURLs": [],
+   "potentialPromotionLabels": [
+    "24.31% Off"
+   ],
+   "productLabels": [
+    {
+     "group": "A",
+     "count": 0,
+     "label": [
+      {
+       "key": "potentialPromotions",
+       "value": "24% Off"
+      }
+     ],
+     "swatchImages": []
+    },
+    {
+     "group": "D",
+     "count": 0,
+     "label": [
+      {
+       "key": "exclusive",
+       "value": "Exclusive"
+      }
+     ],
+     "swatchImages": []
+    }
+   ],
+   "volumePricesFlag": false,
+   "gwpImageUrl": "",
+   "eligibleForBcrs": false
+  },
+  {
+   "inStock": true,
+   "changi1st": false,
+   "cagODDEligible": false,
+   "sellingFast": false,
+   "onlyFewLeft": false,
+   "eligibleForSameDayDelivery": false,
+   "eligibleForNextDayDelivery": false,
+   "cagGiftWrapping": false,
+   "oddImagePath": "/content/dam/cagishop/icons/on-demand-delivery-logo.png",
+   "multidimensional": false,
+   "newProduct": false,
+   "exclusive": false,
+   "variant": false,
+   "promo": false,
+   "staffExclusive": false,
+   "staffPrice": false,
+   "gstAbsorbed": false,
+   "from": false,
+   "manufacturer": "ROYAL BRACKLA",
+   "url": "/en/product/royal-brackla-12-year-old-1000ml-46--mp00088807",
+   "imageUrl": "https://changiairport.scene7.com/is/image/changiairport/mp00088807-1-royal-brackla-1756190715498",
+   "loveSG": false,
+   "code": "mp00088807",
+   "name": "ROYAL BRACKLA 12 YEAR OLD 1000ML 46%",
+   "locale": "en",
+   "variantCount": 1,
+   "variantLabel": "Volume",
+   "originPrice": {
+    "currencyIso": "SGD",
+    "formattedValue": "S$119.00",
+    "priceType": "BUY",
+    "value": "119.00"
+   },
+   "discountPrice": {
+    "currencyIso": "SGD",
+    "formattedValue": "S$100.00",
+    "priceType": "BUY",
+    "value": "100.00"
+   },
+   "zhPrice": {
+    "currencyIso": "CNY",
+    "formattedValue": "\u00a5520.00",
+    "priceType": "BUY",
+    "value": "520.00"
+   },
+   "displayPriority": 0,
+   "excludeCagPromo": false,
+   "featuredProductImages": [
+    "https://changiairport.scene7.com/is/image/changiairport/mp00088807-2-royal-brackla-1756190715605"
+   ],
+   "immediateBrandName": [
+    "ROYAL BRACKLA"
+   ],
+   "nameInEnglish": "ROYAL-BRACKLA-12-YEAR-OLD-1000ML-46-",
+   "productDisplayName": "12 YEAR OLD 1000ML 46%",
+   "swatchImageURLs": [],
+   "potentialPromotionLabels": [
+    "15.97% Off"
+   ],
+   "productLabels": [
+    {
+     "group": "A",
+     "count": 0,
+     "label": [
+      {
+       "key": "potentialPromotions",
+       "value": "15% Off"
+      }
+     ],
+     "swatchImages": []
+    }
+   ],
+   "volumePricesFlag": false,
+   "gwpImageUrl": "",
+   "eligibleForBcrs": false
+  },
+  {
+   "inStock": true,
+   "changi1st": false,
+   "cagODDEligible": false,
+   "sellingFast": false,
+   "onlyFewLeft": false,
+   "eligibleForSameDayDelivery": false,
+   "eligibleForNextDayDelivery": false,
+   "cagGiftWrapping": false,
+   "oddImagePath": "/content/dam/cagishop/icons/on-demand-delivery-logo.png",
+   "multidimensional": false,
+   "newProduct": false,
+   "exclusive": false,
+   "variant": false,
+   "promo": false,
+   "staffExclusive": false,
+   "staffPrice": false,
+   "gstAbsorbed": false,
+   "from": false,
+   "manufacturer": "ROYAL BRACKLA",
+   "url": "/en/product/royal-brackla-12-year-old-1000ml-46--mp00088806",
+   "imageUrl": "https://changiairport.scene7.com/is/image/changiairport/mp00088807-1-royal-brackla-1756190715498",
+   "loveSG": false,
+   "code": "mp00088806",
+   "name": "ROYAL BRACKLA 12 YEAR OLD 1000ML 46%",
+   "locale": "en",
+   "variantCount": 1,
+   "variantLabel": "Volume",
+   "price": {
+    "currencyIso": "SGD",
+    "formattedValue": "S$100.00",
+    "priceType": "BUY",
+    "value": "100.00"
+   },
+   "originPrice": {
+    "currencyIso": "SGD",
+    "formattedValue": "S$119.00",
+    "priceType": "BUY",
+    "value": "119.00"
+   },
+   "discountPrice": {
+    "currencyIso": "SGD",
+    "formattedValue": "S$100.00",
+    "priceType": "BUY",
+    "value": "100.00"
+   },
+   "zhPrice": {
+    "currencyIso": "CNY",
+    "formattedValue": "\u00a5520.00",
+    "priceType": "BUY",
+    "value": "520.00"
+   },
+   "displayPriority": 0,
+   "excludeCagPromo": false,
+   "featuredProductImages": [
+    "https://changiairport.scene7.com/is/image/changiairport/mp00088807-2-royal-brackla-1756190715605"
+   ],
+   "immediateBrandName": [
+    "ROYAL BRACKLA"
+   ],
+   "nameInEnglish": "ROYAL-BRACKLA-12-YEAR-OLD-1000ML-46-",
+   "productDisplayName": "12 YEAR OLD 1000ML 46%",
+   "swatchImageURLs": [],
+   "potentialPromotionLabels": [
+    "15.97% Off"
+   ],
+   "productLabels": [
+    {
+     "group": "A",
+     "count": 0,
+     "label": [
+      {
+       "key": "potentialPromotions",
+       "value": "15% Off"
+      }
+     ],
+     "swatchImages": []
+    }
+   ],
+   "volumePricesFlag": false,
+   "gwpImageUrl": "",
+   "eligibleForBcrs": false
+  }
+ ]
+}
