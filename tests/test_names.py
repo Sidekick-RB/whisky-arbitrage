@@ -247,6 +247,15 @@ BEDROCK_TERMS = json.dumps({
 
 
 class BedrockTest(unittest.TestCase):
+    def test_default_model_is_apac_inference_profile(self):
+        """Slice 12 diagnosis (11 Nov 2026): the raw model ID
+        amazon.nova-lite-v1:0 raises ValidationException on
+        Converse — Nova must be invoked through a cross-region
+        inference profile. The APAC profile is the default."""
+        assert names.BEDROCK_MODEL_ID == "apac.amazon.nova-lite-v1:0"
+        self.assertEqual(names.BEDROCK_MODEL_ID,
+                         "apac.amazon.nova-lite-v1:0")
+
     def test_stub_converse_returns_terms(self):
         client = _StubBedrockClient(text=BEDROCK_TERMS)
         cleaned = clean_name_bedrock(

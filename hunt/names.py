@@ -13,8 +13,15 @@ match unverified. Nothing here fabricates a key.
 Bedrock model access: the Model access page was retired in 2026 —
 serverless models are auto-enabled on first invoke, so the only
 setup is the bedrock:Converse / bedrock:InvokeModel permission on
-the task role (inline policy whisky-hunt-bedrock-access). Groq
-model: openai/gpt-oss-120b (verified available to this key 9 Nov
+the task role (inline policy whisky-hunt-bedrock-access). Nova
+models must be invoked through a cross-region inference profile,
+not the raw model ID: the raw ID raises ValidationException
+("on-demand throughput isn't supported ... Retry with the ID or
+ARN of an inference profile"), diagnosed by slice 12 on 11 Nov
+2026 after 376 failed calls. The default is the APAC profile
+apac.amazon.nova-lite-v1:0, and the task-role policy must allow
+that inference-profile ARN as well as the foundation-model ARN.
+Groq model: openai/gpt-oss-120b (verified available to this key 9 Nov
 2026; llama-3.3-70b-versatile is NOT available — Groq moved it to
 Enterprise). gpt-oss-120b is a reasoning model, so every Groq call
 sends reasoning_effort low, max_tokens 1024 and response_format
@@ -38,7 +45,11 @@ TIMEOUT_S = 30
 MAX_NAME_CHARS = 500
 MAX_BODY_BYTES = 65536
 BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID",
-                                  "amazon.nova-lite-v1:0")
+                                  # APAC cross-region inference profile.
+                                  # The raw ID amazon.nova-lite-v1:0 raises
+                                  # ValidationException on Converse (slice
+                                  # 12 diagnosis, 11 Nov 2026).
+                                  "apac.amazon.nova-lite-v1:0")
 BEDROCK_REGION = os.environ.get("AWS_REGION", "ap-southeast-1")
 
 CLEAN_SYSTEM = (
