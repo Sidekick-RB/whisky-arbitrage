@@ -20,6 +20,7 @@ from hunt.report import ParserHealth
 from hunt.run import (
     MAX_NAME_CACHE_ENTRIES,
     _scrape_sg_urllib,
+    _twe_skip_after,
     aggregate_health,
     dedupe_listings,
     match_overseas,
@@ -109,6 +110,25 @@ class AggregateHealthTest(unittest.TestCase):
         assert result.status == "ok"
         assert result.items_found == 3
         self.assertEqual(result.status, "ok")
+
+
+class TweSkipTest(unittest.TestCase):
+    def test_blocked_probe_skips_the_rest(self):
+        """10 Nov 2026: the slice-8 run stalled 85 minutes in the
+        101-125 overseas batch on TWE browser searches while the
+        site throttled the container. A blocked probe ends TWE
+        for the run."""
+        entry = _health("The Whisky Exchange", "blocked", 0, 0,
+                        "no TWE search page loaded (blocked at page 1)")
+        assert _twe_skip_after(entry) is True
+        self.assertTrue(_twe_skip_after(entry))
+
+    def test_other_statuses_keep_searching(self):
+        for status in ("ok", "zero-items", "partial", "error"):
+            entry = _health("The Whisky Exchange", status, 1, 2)
+            assert _twe_skip_after(entry) is False, status
+        self.assertFalse(_twe_skip_after(
+            _health("The Whisky Exchange", "ok", 1, 2)))
 
 
 class MatchOverseasTest(unittest.TestCase):

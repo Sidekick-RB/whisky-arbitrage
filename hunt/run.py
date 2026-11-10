@@ -212,6 +212,21 @@ def _match_exact(prices, canonical):
     return matched
 
 
+def _twe_skip_after(entry):
+    """Whether a TWE result means skip the remaining searches.
+
+    A "blocked" probe (bot wall, or no page loaded) ends TWE for
+    the run: TWE has returned zero priced items while blocked in
+    every run, and each browser search costs minutes once the site
+    starts throttling — the slice-8 run stalled 85 minutes in the
+    101-125 batch on exactly this. Any other status keeps
+    searching, and the next run probes again from the first term.
+    """
+    assert entry is not None, "health entry required"
+    assert entry.retailer, "health must name a retailer"
+    return entry.status == "blocked"
+
+
 def match_overseas(listing, prices, llm_cache, llm_budget):
     """Overseas prices for one SG listing: exact canonical match
     first; LLM cleaning (Bedrock, Groq fallback) only when no exact
@@ -414,10 +429,14 @@ async def run_once(fx, max_pages, paneco_url=None,
                 detail="sitemap failed to load"))
             notes.append("ReserveBar sitemap failed to load; no US "
                          "ReserveBar benchmarks this run.")
+        twe_blocked = False
         for term_no, term in enumerate(chosen, start=1):
-            found, entry = await twe.search(pw, term, seen_at=stamp)
-            twe_health.append(entry)
-            prices_by_term.setdefault(term, []).extend(found)
+            if not twe_blocked:
+                found, entry = await twe.search(pw, term, seen_at=stamp)
+                twe_health.append(entry)
+                prices_by_term.setdefault(term, []).extend(found)
+                if _twe_skip_after(entry):
+                    twe_blocked = True
             found, entry = await whiskyworld.search(term, seen_at=stamp)
             ww_health.append(entry)
             prices_by_term.setdefault(term, []).extend(found)
@@ -435,6 +454,11 @@ async def run_once(fx, max_pages, paneco_url=None,
                 # where the run is.
                 print("Overseas search: %d/%d terms"
                       % (term_no, len(chosen)), flush=True)
+        if twe_blocked:
+            notes.append("TWE blocked on its probe search; the other "
+                         "%d TWE searches were skipped — TWE has "
+                         "returned no priced items while blocked."
+                         % (len(chosen) - len(twe_health)))
         if twe_health:
             entry = aggregate_health(twe.RETAILER, twe_health)
             health.append(entry)
