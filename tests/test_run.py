@@ -19,7 +19,9 @@ from hunt.parsers.twe import parse_search_html as twe_parse
 from hunt.report import ParserHealth
 from hunt.run import (
     MAX_NAME_CACHE_ENTRIES,
+    _record_timeout,
     _scrape_sg_urllib,
+    _search_bounded,
     _twe_skip_after,
     aggregate_health,
     dedupe_listings,
@@ -129,6 +131,81 @@ class TweSkipTest(unittest.TestCase):
             assert _twe_skip_after(entry) is False, status
         self.assertFalse(_twe_skip_after(
             _health("The Whisky Exchange", "ok", 1, 2)))
+
+    def test_zero_items_on_probe_skips_too(self):
+        """A zero-items probe means TWE is not yielding this run:
+        the probe term is the most-listed bottle, so zero cards
+        for it is a soft block, not an absent bottle."""
+        entry = _health("The Whisky Exchange", "zero-items", 1, 0)
+        assert _twe_skip_after(entry, probe=True) is True
+        self.assertTrue(_twe_skip_after(entry, probe=True))
+
+    def test_zero_items_off_probe_keeps_searching(self):
+        """A later term may genuinely be absent from TWE; only
+        the probe may end the run on zero-items."""
+        entry = _health("The Whisky Exchange", "zero-items", 1, 0)
+        assert _twe_skip_after(entry, probe=False) is False
+        self.assertFalse(_twe_skip_after(entry, probe=False))
+
+
+async def _fast_search():
+    return [_overseas("Glenlivet 18", 149.99)], _health(
+        "Astor Wines", "ok", 1, 1)
+
+
+async def _slow_search():
+    await asyncio.sleep(0.5)
+    return [], _health("Astor Wines", "ok", 0, 0)
+
+
+async def _failing_search():
+    raise ValueError("parser crashed")
+
+
+class SearchBoundedTest(unittest.TestCase):
+    def test_fast_search_passes_through(self):
+        found, entry, timed_out = asyncio.run(_search_bounded(
+            _fast_search(), "Astor Wines", timeout_s=5))
+        assert len(found) == 1 and entry.status == "ok"
+        assert timed_out is False
+        self.assertFalse(timed_out)
+
+    def test_slow_search_times_out(self):
+        """10 Nov 2026: slice 10 stalled 68 minutes in the 26-50
+        overseas batch on a throttled search with no bound."""
+        found, entry, timed_out = asyncio.run(_search_bounded(
+            _slow_search(), "Astor Wines", timeout_s=0.05))
+        assert found == [] and entry.status == "error"
+        assert "timed out" in entry.detail
+        assert timed_out is True
+        self.assertTrue(timed_out)
+
+    def test_other_errors_still_propagate(self):
+        """Only the timeout is converted; a parser crash must
+        stay loud so the run fails visibly."""
+        with self.assertRaises(ValueError):
+            asyncio.run(_search_bounded(
+                _failing_search(), "Astor Wines", timeout_s=5))
+
+
+class RecordTimeoutTest(unittest.TestCase):
+    def test_two_timeouts_skip_the_retailer(self):
+        timeouts = {}
+        skipped = set()
+        assert _record_timeout("Astor Wines", True, timeouts,
+                               skipped) is False
+        assert _record_timeout("Astor Wines", True, timeouts,
+                               skipped) is True
+        assert "Astor Wines" in skipped
+        self.assertIn("Astor Wines", skipped)
+
+    def test_no_timeout_records_nothing(self):
+        timeouts = {}
+        skipped = set()
+        assert _record_timeout("Astor Wines", False, timeouts,
+                               skipped) is False
+        assert timeouts == {} and skipped == set()
+        self.assertEqual(timeouts, {})
 
 
 class MatchOverseasTest(unittest.TestCase):

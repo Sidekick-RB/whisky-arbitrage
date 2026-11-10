@@ -74,6 +74,16 @@ DEFAULT_NAME_CACHE = "name-cache.json"
 MAX_OVERSEAS_QUERIES = 150
 MAX_LLM_CALLS = 500
 MAX_NAME_CACHE_ENTRIES = 5000
+# One overseas search per retailer per term gets at most this long.
+# Slice 10 stalled 68 minutes in the 26-50 batch: a throttled
+# search has no internal bound that fires, so the run needs one.
+OVERSEAS_RETAILER_TIMEOUT_S = 120
+# Timeouts before a retailer is skipped for the rest of the run.
+MAX_RETAILER_TIMEOUTS = 2
+# Progress lines in the 150-term overseas loop. Slice 6 went ~63
+# silent minutes at every-25; every-5 shows a stall within one
+# batch instead of after it.
+OVERSEAS_PROGRESS_EVERY = 5
 
 
 def parse_args(argv):
@@ -212,19 +222,66 @@ def _match_exact(prices, canonical):
     return matched
 
 
-def _twe_skip_after(entry):
+def _twe_skip_after(entry, probe=False):
     """Whether a TWE result means skip the remaining searches.
 
-    A "blocked" probe (bot wall, or no page loaded) ends TWE for
+    A "blocked" result (bot wall, or no page loaded) ends TWE for
     the run: TWE has returned zero priced items while blocked in
     every run, and each browser search costs minutes once the site
     starts throttling — the slice-8 run stalled 85 minutes in the
-    101-125 batch on exactly this. Any other status keeps
-    searching, and the next run probes again from the first term.
+    101-125 batch on exactly this. A "zero-items" result on the
+    probe term means the same: the probe is the most-listed
+    bottle, so zero cards for it means TWE is not yielding this
+    run. Any other status keeps searching, and the next run probes
+    again from the first term.
     """
     assert entry is not None, "health entry required"
     assert entry.retailer, "health must name a retailer"
-    return entry.status == "blocked"
+    if entry.status == "blocked":
+        return True
+    return bool(probe) and entry.status == "zero-items"
+
+
+async def _search_bounded(coro, retailer,
+                          timeout_s=OVERSEAS_RETAILER_TIMEOUT_S):
+    """Run one overseas search bounded in time.
+
+    Returns (prices, health, timed_out). A timeout becomes an
+    "error" health entry with no prices, so the run moves on
+    instead of stalling on one throttled search. Other exceptions
+    still propagate — a parser crash must stay loud.
+    """
+    assert coro is not None, "search coroutine required"
+    assert retailer, "retailer required"
+    assert timeout_s > 0, "timeout must be positive"
+    try:
+        found, entry = await asyncio.wait_for(coro, timeout=timeout_s)
+    except asyncio.TimeoutError:
+        entry = ParserHealth(
+            retailer=retailer, pages_scanned=0, items_found=0,
+            status="error",
+            detail="search timed out after %ds" % timeout_s)
+        return [], entry, True
+    assert entry is not None, "search must return a health entry"
+    return found, entry, False
+
+
+def _record_timeout(retailer, timed_out, timeouts, skipped,
+                    limit=MAX_RETAILER_TIMEOUTS):
+    """Record one search timeout. Returns True when the retailer
+    should be skipped for the rest of the run: two timeouts mean
+    throttled, not unlucky. The skipped set is mutated in place.
+    """
+    assert retailer, "retailer required"
+    assert timeouts is not None and skipped is not None
+    assert limit >= 1, "timeout limit must be at least 1"
+    if not timed_out:
+        return False
+    timeouts[retailer] = timeouts.get(retailer, 0) + 1
+    if timeouts[retailer] >= limit:
+        skipped.add(retailer)
+        return True
+    return False
 
 
 def match_overseas(listing, prices, llm_cache, llm_budget):
@@ -430,28 +487,49 @@ async def run_once(fx, max_pages, paneco_url=None,
             notes.append("ReserveBar sitemap failed to load; no US "
                          "ReserveBar benchmarks this run.")
         twe_blocked = False
+        retailer_timeouts = {}
+        retailer_skipped = set()
         for term_no, term in enumerate(chosen, start=1):
-            if not twe_blocked:
-                found, entry = await twe.search(pw, term, seen_at=stamp)
+            if not twe_blocked and \
+                    twe.RETAILER not in retailer_skipped:
+                found, entry, timed_out = await _search_bounded(
+                    twe.search(pw, term, seen_at=stamp), twe.RETAILER)
                 twe_health.append(entry)
                 prices_by_term.setdefault(term, []).extend(found)
-                if _twe_skip_after(entry):
+                if _twe_skip_after(entry, probe=(term_no == 1)):
                     twe_blocked = True
-            found, entry = await whiskyworld.search(term, seen_at=stamp)
-            ww_health.append(entry)
-            prices_by_term.setdefault(term, []).extend(found)
-            found, entry = await astor.search(term, seen_at=stamp)
-            astor_health.append(entry)
-            prices_by_term.setdefault(term, []).extend(found)
-            if sitemap_urls is not None:
-                found, entry = await reservebar.search(
-                    term, sitemap_urls=sitemap_urls, seen_at=stamp)
+                _record_timeout(twe.RETAILER, timed_out,
+                                retailer_timeouts, retailer_skipped)
+            if whiskyworld.RETAILER not in retailer_skipped:
+                found, entry, timed_out = await _search_bounded(
+                    whiskyworld.search(term, seen_at=stamp),
+                    whiskyworld.RETAILER)
+                ww_health.append(entry)
+                prices_by_term.setdefault(term, []).extend(found)
+                _record_timeout(whiskyworld.RETAILER, timed_out,
+                                retailer_timeouts, retailer_skipped)
+            if astor.RETAILER not in retailer_skipped:
+                found, entry, timed_out = await _search_bounded(
+                    astor.search(term, seen_at=stamp), astor.RETAILER)
+                astor_health.append(entry)
+                prices_by_term.setdefault(term, []).extend(found)
+                _record_timeout(astor.RETAILER, timed_out,
+                                retailer_timeouts, retailer_skipped)
+            if sitemap_urls is not None and \
+                    reservebar.RETAILER not in retailer_skipped:
+                found, entry, timed_out = await _search_bounded(
+                    reservebar.search(term, sitemap_urls=sitemap_urls,
+                                      seen_at=stamp),
+                    reservebar.RETAILER)
                 rb_health.append(entry)
                 prices_by_term.setdefault(term, []).extend(found)
-            if term_no % 25 == 0 or term_no == len(chosen):
-                # The 150-term loop took ~63 silent minutes in the
-                # slice-6 run; log progress so a crash check can see
-                # where the run is.
+                _record_timeout(reservebar.RETAILER, timed_out,
+                                retailer_timeouts, retailer_skipped)
+            if term_no % OVERSEAS_PROGRESS_EVERY == 0 or \
+                    term_no == len(chosen):
+                # Slice 6 went ~63 silent minutes and slice 10
+                # stalled at 25/150; log often so a crash check
+                # can see where the run is.
                 print("Overseas search: %d/%d terms"
                       % (term_no, len(chosen)), flush=True)
         if twe_blocked:
@@ -459,6 +537,9 @@ async def run_once(fx, max_pages, paneco_url=None,
                          "%d TWE searches were skipped — TWE has "
                          "returned no priced items while blocked."
                          % (len(chosen) - len(twe_health)))
+        for retailer in sorted(retailer_skipped):
+            notes.append("%s timed out twice and was skipped for the "
+                         "remaining overseas searches." % retailer)
         if twe_health:
             entry = aggregate_health(twe.RETAILER, twe_health)
             health.append(entry)
