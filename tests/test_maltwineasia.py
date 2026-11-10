@@ -58,6 +58,28 @@ class FixtureTest(unittest.TestCase):
         assert "Château Beychevelle 2019" not in names
         self.assertNotIn("Château Beychevelle 2019", names)
 
+    def test_zero_price_skipped(self):
+        # 10 Nov 2026: the slice-4 validation run crashed on
+        # AssertionError "price must be positive" — the catalogue
+        # lists tasting events at price "0" (e.g. "Italian Wine
+        # Tasting" on page 5). A zero price is not a price and must
+        # never crash the parser.
+        event = [{
+            "name": "Italian Wine Tasting",
+            "permalink": "https://maltwineasia.com/product/italian-wine-tasting/",
+            "prices": {"price": "0", "currency_code": "SGD",
+                       "currency_minor_unit": 2},
+            "is_in_stock": True,
+            "attributes": [{"name": "Volume",
+                            "terms": [{"name": "750 ML"}]}],
+            "categories": [{"name": "Wine"}],
+        }]
+        listings, _, seen, skipped = parse_products_json(event, SEEN_AT)
+        assert len(listings) == 0
+        assert seen == 1
+        assert skipped == 1
+        self.assertEqual(len(listings), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

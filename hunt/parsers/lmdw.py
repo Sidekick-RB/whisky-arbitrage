@@ -75,8 +75,9 @@ def _price_sgd(product):
     assert minor >= 0, "price must be non-negative"
     assert 0 <= minor_unit <= 3, "minor unit out of range"
     value = minor / (10 ** minor_unit)
-    assert value > 0, "price must be positive"
-    return value
+    # A zero price (e.g. a tasting-event product priced "0") is not
+    # a price: skip it, never crash. Same rule as parse_price.
+    return value if value > 0 else None
 
 
 def parse_products_json(data, seen_at):

@@ -104,6 +104,26 @@ class FixtureTest(unittest.TestCase):
         assert listings[0].size_verified is False
         self.assertIsNone(listings[0].size_ml)
 
+    def test_zero_price_skipped(self):
+        # 10 Nov 2026: the same "must be positive" assertion shape
+        # crashed the Malt & Wine Asia parser on a zero-price tasting
+        # event. A zero price is not a price and must never crash.
+        event = [{
+            "name": "LMDW Tasting Event",
+            "permalink": "https://www.whisky.sg/product/tasting-event/",
+            "prices": {"price": "0", "currency_code": "SGD",
+                       "currency_minor_unit": 2},
+            "is_in_stock": True,
+            "attributes": [{"name": "Volume",
+                            "terms": [{"name": "70cl"}]}],
+            "categories": [{"name": "Scotch Whisky"}],
+        }]
+        listings, _, seen, skipped = parse_products_json(event, SEEN_AT)
+        assert len(listings) == 0
+        assert seen == 1
+        assert skipped == 1
+        self.assertEqual(len(listings), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
