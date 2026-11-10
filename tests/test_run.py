@@ -18,10 +18,12 @@ from hunt.parsers.tlc import parse_feed_json as tlc_parse
 from hunt.parsers.twe import parse_search_html as twe_parse
 from hunt.report import ParserHealth
 from hunt.run import (
+    MAX_NAME_CACHE_ENTRIES,
     _scrape_sg_urllib,
     aggregate_health,
     dedupe_listings,
     match_overseas,
+    prune_name_cache,
     search_term,
 )
 
@@ -139,6 +141,54 @@ class MatchOverseasTest(unittest.TestCase):
         assert matched == []
         assert calls == 0
         self.assertEqual(matched, [])
+
+    def test_prefilled_cache_spends_no_calls(self):
+        # The persistent name cache: both names were cleaned in an
+        # earlier run, so no LLM call may happen at all — clean_to_key
+        # is replaced with a raiser to prove it.
+        listing = _listing("Jack Daniel's 10 Year Old 70cl",
+                           "jack-daniels-10yr")
+        prices = [_overseas(
+            "Jack Daniel's 10 Year Old Batch 5 70cl", 115.00)]
+        cache = {
+            "Jack Daniel's 10 Year Old 70cl": "jack-daniels-10yr",
+            "Jack Daniel's 10 Year Old Batch 5 70cl": "jack-daniels-10yr",
+        }
+        import hunt.run as run_module
+        real_clean = run_module.clean_to_key
+
+        def _raise(name):
+            raise AssertionError("LLM must not be called for cached names")
+
+        run_module.clean_to_key = _raise
+        try:
+            matched, calls = match_overseas(listing, prices, cache, 10)
+        finally:
+            run_module.clean_to_key = real_clean
+        assert len(matched) == 1
+        assert calls == 0
+        self.assertEqual(len(matched), 1)
+
+
+class PruneCacheTest(unittest.TestCase):
+    def test_failures_are_never_persisted(self):
+        cache = {
+            "Royal Brackla 18": "royal-brackla-18yr",
+            "Uncleanable Bottle": None,
+            "Bad Key": 42,
+        }
+        pruned = prune_name_cache(cache)
+        assert pruned == {"Royal Brackla 18": "royal-brackla-18yr"}
+        self.assertEqual(len(pruned), 1)
+
+    def test_cap_keeps_newest(self):
+        cache = {"bottle-%04d" % i: "key-%04d" % i
+                 for i in range(MAX_NAME_CACHE_ENTRIES + 10)}
+        pruned = prune_name_cache(cache)
+        assert len(pruned) == MAX_NAME_CACHE_ENTRIES
+        assert "bottle-0000" not in pruned
+        assert "bottle-%04d" % (MAX_NAME_CACHE_ENTRIES + 9) in pruned
+        self.assertEqual(len(pruned), MAX_NAME_CACHE_ENTRIES)
 
 
 class PipelineTest(unittest.TestCase):

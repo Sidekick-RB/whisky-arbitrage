@@ -11,6 +11,7 @@ object or a failed call.
 import os
 
 STATE_KEY = "state/hunt-state.json"
+NAME_CACHE_KEY = "state/name-cache.json"
 REPORT_KEY_PREFIX = "reports/"
 
 
@@ -81,3 +82,11 @@ def upload_run(bucket, report_path, state_path, run_id, client=None):
     state_ok = upload_file(bucket, STATE_KEY, state_path, client)
     assert isinstance(report_ok, bool) and isinstance(state_ok, bool)
     return report_ok, state_ok
+
+
+def upload_cache(bucket, cache_path, client=None):
+    """Upload the name-cleaning cache. Returns True on success."""
+    assert isinstance(bucket, str) and bucket, "bucket required"
+    ok = upload_file(bucket, NAME_CACHE_KEY, cache_path, client)
+    assert isinstance(ok, bool), "upload must return a bool"
+    return ok

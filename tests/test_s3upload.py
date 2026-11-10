@@ -12,9 +12,11 @@ import tempfile
 import unittest
 
 from hunt.s3upload import (
+    NAME_CACHE_KEY,
     STATE_KEY,
     download_file,
     report_key,
+    upload_cache,
     upload_file,
     upload_run,
 )
@@ -70,6 +72,10 @@ class KeysTest(unittest.TestCase):
         assert STATE_KEY == "state/hunt-state.json"
         self.assertEqual(STATE_KEY, "state/hunt-state.json")
 
+    def test_name_cache_key(self):
+        assert NAME_CACHE_KEY == "state/name-cache.json"
+        self.assertEqual(NAME_CACHE_KEY, "state/name-cache.json")
+
 
 class UploadTest(unittest.TestCase):
     def test_upload_records_call(self):
@@ -101,6 +107,21 @@ class UploadTest(unittest.TestCase):
         with self.assertRaises(AssertionError):
             upload_file(BUCKET, "reports/x.json",
                         "/tmp/does-not-exist-xyz.json", stub)
+
+    def test_upload_cache_records_call(self):
+        path = _temp_json({"Royal Brackla 18": "royal-brackla-18yr"})
+        try:
+            stub = _StubS3()
+            assert upload_cache(BUCKET, path, stub)
+            assert len(stub.puts) == 1
+            bucket, key, body = stub.puts[0]
+            assert bucket == BUCKET
+            assert key == NAME_CACHE_KEY
+            assert json.loads(body) == {
+                "Royal Brackla 18": "royal-brackla-18yr"}
+            self.assertEqual(len(stub.puts), 1)
+        finally:
+            os.unlink(path)
 
 
 class DownloadTest(unittest.TestCase):

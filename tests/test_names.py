@@ -1,10 +1,11 @@
-"""Unit tests for Groq name-cleaning (hunt/names.py).
+"""Unit tests for Groq + Bedrock name-cleaning (hunt/names.py).
 
 No real Groq calls: a local stub HTTP server answers with a canned
 chat completion, so the request contract (model, reasoning_effort,
 max_tokens, response_format, browser User-Agent, Bearer auth) is
-verified offline. One env-gated live test runs only when GROQ_API_KEY
-is set.
+verified offline. No real Bedrock calls either: a stub client
+answers with a canned Converse response. One env-gated live test
+runs only when GROQ_API_KEY is set.
 """
 
 import http.server
@@ -13,9 +14,12 @@ import os
 import threading
 import unittest
 
+import hunt.names as names
 from hunt.names import (
     MODEL,
+    _validate_terms,
     clean_name,
+    clean_name_bedrock,
     clean_to_key,
     parse_clean_response,
 )
@@ -210,6 +214,100 @@ class CleanNameStubTest(unittest.TestCase):
         assert clean_name("Royal Brackla 18") is None
         assert clean_to_key("Royal Brackla 18") is None
         self.assertIsNone(clean_name("Royal Brackla 18"))
+
+
+class _StubBedrockClient:
+    """Fake boto3 bedrock-runtime client with a canned Converse
+    answer. Records the request so the contract is verifiable."""
+
+    def __init__(self, text=None, error=None):
+        assert text is None or isinstance(text, str)
+        self.text = text
+        self.error = error
+        self.calls = []
+
+    def converse(self, **kwargs):
+        assert kwargs, "converse must be called with arguments"
+        self.calls.append(kwargs)
+        if self.error is not None:
+            raise self.error
+        return {"output": {"message": {"role": "assistant",
+                                       "content": [{"text": self.text}]}}}
+
+
+BEDROCK_TERMS = json.dumps({
+    "distillery": "Royal Brackla",
+    "age_years": 18,
+    "edition": "palo-cortado-sherry-cask-finish",
+    "is_willet_rye": False,
+})
+
+
+class BedrockTest(unittest.TestCase):
+    def test_stub_converse_returns_terms(self):
+        client = _StubBedrockClient(text=BEDROCK_TERMS)
+        cleaned = clean_name_bedrock(
+            "Royal Brackla 18 Palo Cortado", client=client)
+        assert cleaned is not None
+        assert cleaned["distillery"] == "Royal Brackla"
+        assert cleaned["age_years"] == 18
+        assert len(client.calls) == 1
+        call = client.calls[0]
+        assert call["modelId"] == names.BEDROCK_MODEL_ID
+        assert call["inferenceConfig"]["temperature"] == 0
+        assert call["messages"][0]["role"] == "user"
+        assert "Royal Brackla 18" in call["messages"][0]["content"][0]["text"]
+        self.assertEqual(cleaned["distillery"], "Royal Brackla")
+
+    def test_error_returns_none(self):
+        client = _StubBedrockClient(error=RuntimeError("denied"))
+        assert clean_name_bedrock("Royal Brackla 18",
+                                  client=client) is None
+        self.assertIsNone(clean_name_bedrock(
+            "Royal Brackla 18", client=client))
+
+    def test_non_object_json_returns_none(self):
+        # Bedrock carries no response_format guarantee: a valid JSON
+        # array or bare string must return None, never raise.
+        client = _StubBedrockClient(text='["Royal Brackla", 18]')
+        assert clean_name_bedrock("Royal Brackla 18",
+                                  client=client) is None
+        assert _validate_terms(["Royal Brackla", 18]) is None
+        assert _validate_terms("Royal Brackla") is None
+        self.assertIsNone(_validate_terms([1, 2]))
+
+    def test_clean_to_key_prefers_bedrock(self):
+        # Bedrock succeeds, so Groq must never be called: the Groq
+        # base URL points at a dead port and would fail if used.
+        saved = names.clean_name_bedrock
+        client = _StubBedrockClient(text=BEDROCK_TERMS)
+        names.clean_name_bedrock = (
+            lambda name, **kw: clean_name_bedrock(name, client=client))
+        try:
+            key = clean_to_key("Royal Brackla 18 Palo Cortado",
+                               api_key="unused",
+                               base_url="http://127.0.0.1:1")
+        finally:
+            names.clean_name_bedrock = saved
+        assert key == ("royal-brackla-18yr-"
+                       "palo-cortado-sherry-cask-finish")
+        self.assertEqual(
+            key, "royal-brackla-18yr-palo-cortado-sherry-cask-finish")
+
+    def test_clean_to_key_falls_back_to_groq(self):
+        saved = names.clean_name_bedrock
+        names.clean_name_bedrock = lambda name, **kw: None
+        server, thread, url = _run_stub()
+        try:
+            key = clean_to_key("Royal Brackla 18 Palo Cortado",
+                               api_key="test-key", base_url=url)
+        finally:
+            names.clean_name_bedrock = saved
+            _stop_stub(server, thread)
+        assert key == ("royal-brackla-18yr-"
+                       "palo-cortado-sherry-cask-finish")
+        self.assertEqual(
+            key, "royal-brackla-18yr-palo-cortado-sherry-cask-finish")
 
 
 @unittest.skipUnless("GROQ_API_KEY" in os.environ,

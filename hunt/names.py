@@ -1,18 +1,26 @@
-"""Groq name-cleaning for ambiguous listing names.
+"""Groq + Bedrock name-cleaning for ambiguous listing names.
 
 Cleans a messy retail bottle name into canonical match terms
-(distillery, age_years, edition, is_willet_rye) via the Groq chat
-completions API, standard library only. The API key comes from the
-GROQ_API_KEY environment variable only; it is never written to a file.
-When the key is absent or any call fails, the functions return None and
-the caller marks the match unverified. Nothing here fabricates a key.
+(distillery, age_years, edition, is_willet_rye). Primary provider
+is Amazon Bedrock (boto3 Converse API, model from BEDROCK_MODEL_ID,
+default Amazon Nova Lite in the task's region); Groq's chat
+completions API is the fallback. The Groq key comes from the
+GROQ_API_KEY environment variable only, and Bedrock uses the task
+role's credentials; neither is ever written to a file. When both
+providers fail, the functions return None and the caller marks the
+match unverified. Nothing here fabricates a key.
 
-Model: openai/gpt-oss-120b (verified available to this key 9 Nov 2026;
-llama-3.3-70b-versatile is NOT available — Groq moved it to Enterprise).
-gpt-oss-120b is a reasoning model, so every call sends reasoning_effort
-low, max_tokens 1024 and response_format json_object, or the answer
-truncates mid-JSON. Every request carries a browser User-Agent header
-or api.groq.com returns a Cloudflare 403.
+Bedrock model access: the Model access page was retired in 2026 —
+serverless models are auto-enabled on first invoke, so the only
+setup is the bedrock:Converse / bedrock:InvokeModel permission on
+the task role (inline policy whisky-hunt-bedrock-access). Groq
+model: openai/gpt-oss-120b (verified available to this key 9 Nov
+2026; llama-3.3-70b-versatile is NOT available — Groq moved it to
+Enterprise). gpt-oss-120b is a reasoning model, so every Groq call
+sends reasoning_effort low, max_tokens 1024 and response_format
+json_object, or the answer truncates mid-JSON. Every Groq request
+carries a browser User-Agent header or api.groq.com returns a
+Cloudflare 403.
 """
 
 import json
@@ -29,6 +37,9 @@ USER_AGENT = (
 TIMEOUT_S = 30
 MAX_NAME_CHARS = 500
 MAX_BODY_BYTES = 65536
+BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID",
+                                  "amazon.nova-lite-v1:0")
+BEDROCK_REGION = os.environ.get("AWS_REGION", "ap-southeast-1")
 
 CLEAN_SYSTEM = (
     "You clean whisky retail listing names into canonical search terms. "
@@ -78,30 +89,16 @@ def _post_json(base_url, api_key, payload):
     return resp.status, data
 
 
-def parse_clean_response(data):
-    """Validate a Groq chat completion into canonical terms, or None.
+def _validate_terms(result):
+    """Validate parsed JSON into canonical terms, or None.
 
-    Returns a dict with distillery (str), age_years (int or None),
-    edition (str) and is_willet_rye (bool). Any missing or mistyped
-    field yields None: the caller marks the match unverified.
+    Shared by the Groq and Bedrock paths. A non-object, or any
+    missing or mistyped field, yields None — never a guessed key.
+    Bedrock answers carry no response_format guarantee, so a valid
+    JSON array or bare string must return None, not raise.
     """
-    assert isinstance(data, dict), "completion must be a dict"
-    choices = data.get("choices")
-    if not isinstance(choices, list) or not choices:
+    if not isinstance(result, dict):
         return None
-    first = choices[0]
-    assert isinstance(first, dict), "choice must be a dict"
-    message = first.get("message")
-    if not isinstance(message, dict):
-        return None
-    content = message.get("content")
-    if not isinstance(content, str) or not content.strip():
-        return None
-    try:
-        result = json.loads(content)
-    except ValueError:
-        return None
-    assert isinstance(result, dict), "cleaned terms must be a JSON object"
     distillery = result.get("distillery")
     age = result.get("age_years")
     edition = result.get("edition")
@@ -125,6 +122,74 @@ def parse_clean_response(data):
     assert cleaned["distillery"], "distillery must be non-empty"
     assert isinstance(cleaned["is_willet_rye"], bool)
     return cleaned
+
+
+def parse_clean_response(data):
+    """Validate a Groq chat completion into canonical terms, or None.
+
+    Returns a dict with distillery (str), age_years (int or None),
+    edition (str) and is_willet_rye (bool). Any missing or mistyped
+    field yields None: the caller marks the match unverified.
+    """
+    assert isinstance(data, dict), "completion must be a dict"
+    choices = data.get("choices")
+    if not isinstance(choices, list) or not choices:
+        return None
+    first = choices[0]
+    assert isinstance(first, dict), "choice must be a dict"
+    message = first.get("message")
+    if not isinstance(message, dict):
+        return None
+    content = message.get("content")
+    if not isinstance(content, str) or not content.strip():
+        return None
+    try:
+        result = json.loads(content)
+    except ValueError:
+        return None
+    return _validate_terms(result)
+
+
+def clean_name_bedrock(name, model_id=None, region=None, client=None):
+    """Clean one retail name via Bedrock Converse. Returns canonical
+    terms, or None.
+
+    client exists only so tests can inject a stub; production builds
+    a boto3 bedrock-runtime client with the task role's credentials.
+    Any failure (no boto3, no credentials, denied model, bad answer)
+    returns None and the caller falls back to Groq.
+    """
+    assert isinstance(name, str) and name.strip(), "name required"
+    model = model_id or BEDROCK_MODEL_ID
+    assert isinstance(model, str) and model, "model id required"
+    area = region or BEDROCK_REGION
+    assert isinstance(area, str) and area, "region required"
+    trimmed = name.strip()[:MAX_NAME_CHARS]
+    assert trimmed, "name must be non-empty after trim"
+    try:
+        if client is None:
+            import boto3
+            from botocore.config import Config
+            client = boto3.client(
+                "bedrock-runtime", region_name=area,
+                config=Config(connect_timeout=10, read_timeout=30))
+        response = client.converse(
+            modelId=model,
+            messages=[{"role": "user",
+                       "content": [{"text": trimmed}]}],
+            system=[{"text": CLEAN_SYSTEM}],
+            inferenceConfig={"temperature": 0, "maxTokens": 1024})
+        assert isinstance(response, dict), "Converse must return a dict"
+        message = response["output"]["message"]
+        parts = message.get("content") or []
+        assert isinstance(parts, list), "content must be a list"
+        text = "".join(part.get("text", "") for part in parts
+                       if isinstance(part, dict))
+        assert text.strip(), "Converse answer must be non-empty"
+        result = json.loads(text)
+    except Exception:
+        return None
+    return _validate_terms(result)
 
 
 def clean_name(name, api_key=None, base_url=API_BASE):
@@ -167,14 +232,17 @@ def clean_name(name, api_key=None, base_url=API_BASE):
 def clean_to_key(name, api_key=None, base_url=API_BASE):
     """Clean one retail name into a canonical match key, or None.
 
-    Returns the models.canonical_key() string, or None when the name
-    could not be cleaned (no key, failed call, invalid answer).
+    Bedrock first, Groq fallback. Returns the
+    models.canonical_key() string, or None when the name could not
+    be cleaned (no key, failed calls, invalid answers).
     """
     assert isinstance(name, str) and name.strip(), "name required"
     assert isinstance(base_url, str) and base_url.startswith("http")
     from .models import canonical_key
 
-    cleaned = clean_name(name, api_key=api_key, base_url=base_url)
+    cleaned = clean_name_bedrock(name)
+    if cleaned is None:
+        cleaned = clean_name(name, api_key=api_key, base_url=base_url)
     if cleaned is None:
         return None
     key = canonical_key(

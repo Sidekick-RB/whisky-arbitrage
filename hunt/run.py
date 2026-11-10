@@ -1,18 +1,21 @@
-"""Weekly hunt runner (slice 5: all SG retailers + overseas comparisons).
+"""Weekly hunt runner (slice 6: all SG retailers + overseas comparisons).
 
 Runs every SG parser (Paneco, Cellarbration, TLC, Spirited, Tipsy
 Topsy, Asher, PIVENE, LMDW, Malt & Wine Asia, KrisShop, iShopChangi),
 dedupes by retailer+canonical+mode, then compares every listing
 against verified in-stock overseas prices (TWE, The Whisky World,
-ReserveBar, Astor Wines) via hunt/engine.py. Groq name-cleaning runs
-only when an exact canonical match fails, and only while the call
-budget lasts. Blocked overseas retailers (Master of Malt, Wine.com,
-Total Wine) are probed once per run and reported as blocked, never
-as prices. iShopChangi is scraped in both modes (Non-Traveller and
-Traveller) via its /bin search JSON API; a bottle in both modes
-yields two listings, one per mode. Promo codes are not applied in
-this slice (codes=()); the effective price is the shelf price.
-Never purchases, never adds to cart, never tests a promo code.
+ReserveBar, Astor Wines) via hunt/engine.py. LLM name-cleaning
+(Bedrock primary, Groq fallback) runs only when an exact canonical
+match fails, and only while the call budget lasts; cleaned names
+persist in a name cache (S3 state/name-cache.json) so the same
+bottles are not re-cleaned every week. Blocked overseas retailers
+(Master of Malt, Wine.com, Total Wine) are probed once per run and
+reported as blocked, never as prices. iShopChangi is scraped in both
+modes (Non-Traveller and Traveller) via its /bin search JSON API; a
+bottle in both modes yields two listings, one per mode. Promo codes
+are not applied in this slice (codes=()); the effective price is
+the shelf price. Never purchases, never adds to cart, never tests
+a promo code.
 """
 
 import argparse
@@ -24,7 +27,7 @@ from datetime import datetime, timezone
 from .engine import compare
 from .fx import fetch_rates, fixed_rates
 from .models import MIN_HUNT_PRICE_SGD, canonical_from_name, listing_key
-from .names import clean_to_key
+from .names import BEDROCK_MODEL_ID, clean_to_key
 from .parsers import (
     asher,
     astor,
@@ -55,12 +58,21 @@ from .report import (
     write_json_file,
     write_report,
 )
-from .s3upload import STATE_KEY, download_file, report_key, upload_run
+from .s3upload import (
+    NAME_CACHE_KEY,
+    STATE_KEY,
+    download_file,
+    report_key,
+    upload_cache,
+    upload_run,
+)
 
 DEFAULT_OUT = "hunt-report.json"
 DEFAULT_STATE = "hunt-state.json"
-MAX_OVERSEAS_QUERIES = 60
-MAX_GROQ_CALLS = 100
+DEFAULT_NAME_CACHE = "name-cache.json"
+MAX_OVERSEAS_QUERIES = 150
+MAX_LLM_CALLS = 500
+MAX_NAME_CACHE_ENTRIES = 5000
 
 
 def parse_args(argv):
@@ -73,6 +85,9 @@ def parse_args(argv):
                         help="report JSON path")
     parser.add_argument("--state", default=DEFAULT_STATE,
                         help="state JSON path (read + written)")
+    parser.add_argument("--name-cache", default=DEFAULT_NAME_CACHE,
+                        help="name-cleaning cache JSON path (read + "
+                             "written)")
     parser.add_argument("--fx-gbp", type=float, default=None,
                         help="override GBP->SGD rate")
     parser.add_argument("--fx-usd", type=float, default=None,
@@ -84,17 +99,20 @@ def parse_args(argv):
     parser.add_argument("--max-overseas-queries", type=int,
                         default=MAX_OVERSEAS_QUERIES,
                         help="distinct overseas search terms per run")
-    parser.add_argument("--max-groq-calls", type=int,
-                        default=MAX_GROQ_CALLS,
-                        help="Groq name-cleaning calls per run")
+    parser.add_argument("--max-llm-calls", "--max-groq-calls", type=int,
+                        default=MAX_LLM_CALLS, dest="max_llm_calls",
+                        help="LLM name-cleaning calls per run (Bedrock, "
+                             "Groq fallback)")
     args = parser.parse_args(argv)
     assert args.out.endswith(".json"), "--out must end in .json"
     assert args.state.endswith(".json"), "--state must end in .json"
+    assert args.name_cache.endswith(".json"), (
+        "--name-cache must end in .json")
     assert 1 <= args.max_pages <= MAX_PAGES, "--max-pages out of bounds"
     assert args.paneco_url is None or args.paneco_url.startswith("http")
     assert 1 <= args.max_overseas_queries <= 200, (
         "--max-overseas-queries out of bounds")
-    assert 0 <= args.max_groq_calls <= 500, "--max-groq-calls out of bounds"
+    assert 0 <= args.max_llm_calls <= 500, "--max-llm-calls out of bounds"
     return args
 
 
@@ -193,25 +211,26 @@ def _match_exact(prices, canonical):
     return matched
 
 
-def match_overseas(listing, prices, groq_cache, groq_budget):
+def match_overseas(listing, prices, llm_cache, llm_budget):
     """Overseas prices for one SG listing: exact canonical match
-    first; Groq cleaning only when no exact match exists and budget
-    remains. Returns (matched, groq_calls_used). A Groq failure
-    (None) leaves the listing unmatched — never a guessed match."""
+    first; LLM cleaning (Bedrock, Groq fallback) only when no exact
+    match exists and budget remains. Returns (matched, llm_calls_used).
+    An LLM failure (None) leaves the listing unmatched — never a
+    guessed match."""
     assert listing.price_sgd > 0, "listing price must be positive"
     assert isinstance(prices, list)
-    assert isinstance(groq_cache, dict)
-    assert groq_budget >= 0, "Groq budget must be non-negative"
+    assert isinstance(llm_cache, dict)
+    assert llm_budget >= 0, "LLM budget must be non-negative"
     exact = _match_exact(prices, listing.canonical)
     if exact:
         return exact, 0
-    if groq_budget <= 0 or not prices:
+    if llm_budget <= 0 or not prices:
         return [], 0
     calls = 0
-    local_key = groq_cache.get(listing.name)
+    local_key = llm_cache.get(listing.name)
     if local_key is None:
         local_key = clean_to_key(listing.name)
-        groq_cache[listing.name] = local_key
+        llm_cache[listing.name] = local_key
         calls += 1
     if local_key is None:
         return [], calls
@@ -219,16 +238,16 @@ def match_overseas(listing, prices, groq_cache, groq_budget):
     for price in prices:
         if not price.in_stock:
             continue
-        overseas_key = groq_cache.get(price.name)
+        overseas_key = llm_cache.get(price.name)
         if overseas_key is None:
-            if calls >= groq_budget:
+            if calls >= llm_budget:
                 break
             overseas_key = clean_to_key(price.name)
-            groq_cache[price.name] = overseas_key
+            llm_cache[price.name] = overseas_key
             calls += 1
         if overseas_key is not None and overseas_key == local_key:
             matched.append(price)
-    assert calls <= groq_budget, "Groq budget exceeded"
+    assert calls <= llm_budget, "LLM budget exceeded"
     return matched, calls
 
 
@@ -293,15 +312,35 @@ async def _scrape_sg_urllib(stamp):
     return listings, health
 
 
+def prune_name_cache(cache):
+    """Persistable name cache: only successful cleanings (raw name ->
+    canonical key string), newest first, capped at
+    MAX_NAME_CACHE_ENTRIES. Failures (None) are never persisted —
+    they are retried next run. Returns a new dict."""
+    assert isinstance(cache, dict), "cache must be a dict"
+    kept = [(name, key) for name, key in cache.items()
+            if isinstance(name, str) and isinstance(key, str)]
+    assert len(kept) <= len(cache), "prune must not grow the cache"
+    if len(kept) > MAX_NAME_CACHE_ENTRIES:
+        kept = kept[-MAX_NAME_CACHE_ENTRIES:]
+    pruned = dict(kept)
+    assert len(pruned) <= MAX_NAME_CACHE_ENTRIES, "cache cap exceeded"
+    return pruned
+
+
 async def run_once(fx, max_pages, paneco_url=None,
                    max_overseas_queries=MAX_OVERSEAS_QUERIES,
-                   max_groq_calls=MAX_GROQ_CALLS):
-    """Run the full hunt. Returns (listings, health, comparisons, notes)."""
+                   max_llm_calls=MAX_LLM_CALLS, name_cache=None):
+    """Run the full hunt. Returns (listings, health, comparisons,
+    notes). name_cache is a dict the run reads and updates in place
+    (raw name -> canonical key); pass None for a fresh empty cache."""
     assert fx is not None, "FX rates required"
     assert 1 <= max_pages <= MAX_PAGES, "max_pages out of bounds"
     assert 1 <= max_overseas_queries <= 200, "query cap out of bounds"
-    assert 0 <= max_groq_calls <= 500, "Groq cap out of bounds"
+    assert 0 <= max_llm_calls <= 500, "LLM cap out of bounds"
     assert paneco_url is None or paneco_url.startswith("http")
+    assert name_cache is None or isinstance(name_cache, dict), (
+        "name_cache must be a dict or None")
     from playwright.async_api import async_playwright
     from playwright_stealth import Stealth
 
@@ -416,12 +455,12 @@ async def run_once(fx, max_pages, paneco_url=None,
                      "TWE, The Whisky World, ReserveBar and Astor "
                      "Wines only.")
     # --- Comparisons for every SG listing.
-    groq_available = bool(os.environ.get("GROQ_API_KEY"))
-    if not groq_available:
-        notes.append("GROQ_API_KEY is not set; ambiguous matches stay "
-                     "unverified (exact canonical matches only).")
-    groq_cache = {}
-    groq_used = 0
+    groq_fallback = bool(os.environ.get("GROQ_API_KEY"))
+    notes.append("Name-cleaning via Bedrock %s; Groq fallback %s."
+                 % (BEDROCK_MODEL_ID,
+                    "configured" if groq_fallback else "not configured"))
+    llm_cache = name_cache if name_cache is not None else {}
+    llm_used = 0
     comparisons = []
     for item in listings:
         overseas = []
@@ -429,9 +468,9 @@ async def run_once(fx, max_pages, paneco_url=None,
                 and item.size_ml is not None and item.size_verified):
             term = search_term(item.canonical)
             overseas, used = match_overseas(
-                item, prices_by_term.get(term, []), groq_cache,
-                max_groq_calls - groq_used)
-            groq_used += used
+                item, prices_by_term.get(term, []), llm_cache,
+                max_llm_calls - llm_used)
+            llm_used += used
         result = compare(item, overseas, fx, codes=(), as_of=as_of)
         comparisons.append({
             "retailer": item.retailer,
@@ -439,9 +478,9 @@ async def run_once(fx, max_pages, paneco_url=None,
             "name": item.name,
             **result.to_dict(),
         })
-    if groq_used >= max_groq_calls and max_groq_calls > 0:
-        notes.append("Groq call budget (%d) exhausted; later ambiguous "
-                     "matches stayed exact-only." % max_groq_calls)
+    if llm_used >= max_llm_calls and max_llm_calls > 0:
+        notes.append("LLM call budget (%d) exhausted; later ambiguous "
+                     "matches stayed exact-only." % max_llm_calls)
     notes.append("Promo codes are not applied in this slice; effective "
                  "price is the shelf price.")
     assert len(comparisons) == len(listings), (
@@ -466,6 +505,7 @@ def main(argv=None):
     fixed, 3 when the S3 upload failed."""
     args = parse_args(list(sys.argv[1:] if argv is None else argv))
     assert args.out.endswith(".json") and args.state.endswith(".json")
+    assert args.name_cache.endswith(".json")
     fx = resolve_fx(args)
     if fx is None:
         print("ERROR: FX rates unavailable and no --fx overrides given.",
@@ -482,9 +522,18 @@ def main(argv=None):
         if download_file(bucket, STATE_KEY, args.state):
             print("Baseline state downloaded from s3://%s/%s"
                   % (bucket, STATE_KEY))
+    if bucket and not os.path.exists(args.name_cache):
+        # Same for the name-cleaning cache: without it the run
+        # re-cleans every bottle it already cleaned last week.
+        if download_file(bucket, NAME_CACHE_KEY, args.name_cache):
+            print("Name cache downloaded from s3://%s/%s"
+                  % (bucket, NAME_CACHE_KEY))
+    name_cache = load_state(args.name_cache) or {}
+    name_cache = prune_name_cache(name_cache)
     listings, health, comparisons, notes = asyncio.run(
         run_once(fx, args.max_pages, args.paneco_url,
-                 args.max_overseas_queries, args.max_groq_calls))
+                 args.max_overseas_queries, args.max_llm_calls,
+                 name_cache=name_cache))
     state = build_state(listings)
     previous = load_state(args.state) or {}
     diff = diff_states(previous, state)
@@ -492,9 +541,14 @@ def main(argv=None):
                           notes)
     assert write_report(report, args.out), "report write failed"
     assert write_json_file(state, args.state), "state write failed"
+    name_cache = prune_name_cache(name_cache)
+    assert write_json_file(name_cache, args.name_cache), (
+        "name cache write failed")
     if bucket:
-        # The Fargate filesystem is ephemeral: the report and the new
-        # baseline must reach S3 before the task stops.
+        # The Fargate filesystem is ephemeral: the report, the new
+        # baseline and the name cache must reach S3 before the task
+        # stops. A lost name cache only costs re-cleaning next week,
+        # so its upload failure warns instead of failing the run.
         report_ok, state_ok = upload_run(
             bucket, args.out, args.state, run_id)
         if report_ok and state_ok:
@@ -505,6 +559,11 @@ def main(argv=None):
                   "the run's output is lost with the container."
                   % (report_ok, state_ok), file=sys.stderr)
             return 3
+        if upload_cache(bucket, args.name_cache):
+            print("Uploaded s3://%s/%s" % (bucket, NAME_CACHE_KEY))
+        else:
+            print("WARNING: name cache upload failed; next week's run "
+                  "re-cleans from scratch.", file=sys.stderr)
     qualifiers = [c for c in comparisons if c["verdict"] == "qualifier"]
     close_finds = [c for c in comparisons if c["verdict"] == "close-find"]
     print("SG: %d listings across %d retailers"
