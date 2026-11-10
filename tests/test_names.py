@@ -17,6 +17,7 @@ import unittest
 import hunt.names as names
 from hunt.names import (
     MODEL,
+    _extract_json_object,
     _validate_terms,
     clean_name,
     clean_name_bedrock,
@@ -265,6 +266,36 @@ class BedrockTest(unittest.TestCase):
                                   client=client) is None
         self.assertIsNone(clean_name_bedrock(
             "Royal Brackla 18", client=client))
+
+    def test_fenced_json_returns_terms(self):
+        """10 Nov 2026: the slice-7 run's 376 Bedrock calls all
+        failed silently and the persisted name cache came back
+        empty. Bedrock carries no response_format guarantee, so a
+        fenced answer must parse, not die in json.loads."""
+        fenced = "```json\n" + BEDROCK_TERMS + "\n```"
+        client = _StubBedrockClient(text=fenced)
+        cleaned = clean_name_bedrock(
+            "Royal Brackla 18 Palo Cortado", client=client)
+        assert cleaned is not None
+        assert cleaned["distillery"] == "Royal Brackla"
+        assert cleaned["age_years"] == 18
+        self.assertEqual(cleaned["distillery"], "Royal Brackla")
+
+    def test_prose_wrapped_json_returns_terms(self):
+        text = ("Here are the canonical terms:\n" + BEDROCK_TERMS
+                + "\nHope that helps.")
+        client = _StubBedrockClient(text=text)
+        cleaned = clean_name_bedrock(
+            "Royal Brackla 18 Palo Cortado", client=client)
+        assert cleaned is not None
+        assert cleaned["age_years"] == 18
+
+    def test_extract_json_object_edges(self):
+        assert _extract_json_object(BEDROCK_TERMS) is not None
+        assert _extract_json_object("no braces here") is None
+        assert _extract_json_object('{"a": 1') is None
+        assert _extract_json_object('["Royal Brackla", 18]') is None
+        self.assertIsNone(_extract_json_object("plain text"))
 
     def test_non_object_json_returns_none(self):
         # Bedrock carries no response_format guarantee: a valid JSON

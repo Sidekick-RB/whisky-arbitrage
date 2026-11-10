@@ -468,6 +468,8 @@ async def run_once(fx, max_pages, paneco_url=None,
                     "configured" if groq_fallback else "not configured"))
     llm_cache = name_cache if name_cache is not None else {}
     cache_before = len(llm_cache)
+    cache_str_before = sum(
+        1 for value in llm_cache.values() if isinstance(value, str))
     print("Starting comparisons: name-cleaning via Bedrock %s"
           % BEDROCK_MODEL_ID, flush=True)
     llm_used = 0
@@ -489,13 +491,17 @@ async def run_once(fx, max_pages, paneco_url=None,
             "traveller_only": bool(item.traveller_only),
             **result.to_dict(),
         })
-    # The slice-6 run left no evidence the name-cleaning phase ran
-    # at all (no Bedrock/cache/LLM log lines before its crash), so
-    # log the usage here: calls made plus cache growth (entries
-    # include names that could not be cleaned).
-    print("Name-cleaning: %d LLM calls, %d new cache entries "
-          "(cache now holds %d)"
-          % (llm_used, len(llm_cache) - cache_before, len(llm_cache)),
+    # The slice-7 run logged "376 LLM calls, 357 new cache entries"
+    # while the persisted cache was empty: the old line counted
+    # attempts, and every cleaning had failed silently (None).
+    # Count successes too, so a silent Bedrock failure is visible
+    # in the next run's log instead of hiding behind the call count.
+    cleaned = sum(
+        1 for value in llm_cache.values() if isinstance(value, str))
+    print("Name-cleaning: %d LLM calls, %d succeeded, %d new cache "
+          "entries (cache now holds %d)"
+          % (llm_used, cleaned - cache_str_before,
+             len(llm_cache) - cache_before, len(llm_cache)),
           flush=True)
     if llm_used >= max_llm_calls and max_llm_calls > 0:
         notes.append("LLM call budget (%d) exhausted; later ambiguous "

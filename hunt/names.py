@@ -150,6 +150,36 @@ def parse_clean_response(data):
     return _validate_terms(result)
 
 
+def _extract_json_object(text):
+    """First JSON object in model text, or None.
+
+    Bedrock Converse carries no response_format guarantee, so Nova
+    may wrap the answer in ```json fences or prose. Strip fences,
+    then take the substring from the first '{' to the last '}'.
+    A missing or unbalanced object yields None, never a guess.
+    """
+    assert isinstance(text, str), "text must be a string"
+    stripped = text.strip()
+    assert stripped, "text must be non-empty after trim"
+    if stripped.startswith("```"):
+        lines = stripped.splitlines()
+        assert lines, "fenced text must have lines"
+        lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        stripped = "\n".join(lines).strip()
+    start = stripped.find("{")
+    end = stripped.rfind("}")
+    if start < 0 or end <= start:
+        return None
+    try:
+        result = json.loads(stripped[start:end + 1])
+    except ValueError:
+        return None
+    assert isinstance(result, dict), "extracted JSON must be an object"
+    return result
+
+
 def clean_name_bedrock(name, model_id=None, region=None, client=None):
     """Clean one retail name via Bedrock Converse. Returns canonical
     terms, or None.
@@ -186,7 +216,7 @@ def clean_name_bedrock(name, model_id=None, region=None, client=None):
         text = "".join(part.get("text", "") for part in parts
                        if isinstance(part, dict))
         assert text.strip(), "Converse answer must be non-empty"
-        result = json.loads(text)
+        result = _extract_json_object(text)
     except Exception:
         return None
     return _validate_terms(result)
