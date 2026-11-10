@@ -1,17 +1,17 @@
-"""Weekly hunt runner (slice 3: all SG retailers + overseas comparisons).
+"""Weekly hunt runner (slice 4: all SG retailers + overseas comparisons).
 
 Runs every SG parser (Paneco, Cellarbration, TLC, Spirited, Tipsy
-Topsy, Asher, PIVENE, LMDW, KrisShop, iShopChangi), dedupes by
-retailer+canonical+mode, then compares every listing against verified
-in-stock overseas prices (TWE, The Whisky World, ReserveBar) via
-hunt/engine.py. Groq name-cleaning runs only when an exact canonical
-match fails, and only while the call budget lasts. Blocked overseas
-retailers (Master of Malt, Wine.com, Total Wine) and Malt & Wine Asia
-are probed once per run and reported as blocked, never as prices.
-iShopChangi is scraped in both modes (Non-Traveller and Traveller),
-each in a fresh browser context; a bottle in both modes yields two
-listings, one per mode. Promo codes are not applied in this slice
-(codes=()); the effective price is the shelf price.
+Topsy, Asher, PIVENE, LMDW, Malt & Wine Asia, KrisShop, iShopChangi),
+dedupes by retailer+canonical+mode, then compares every listing
+against verified in-stock overseas prices (TWE, The Whisky World,
+ReserveBar, Astor Wines) via hunt/engine.py. Groq name-cleaning runs
+only when an exact canonical match fails, and only while the call
+budget lasts. Blocked overseas retailers (Master of Malt, Wine.com,
+Total Wine) are probed once per run and reported as blocked, never
+as prices. iShopChangi is scraped in both modes (Non-Traveller and
+Traveller), each in a fresh browser context; a bottle in both modes
+yields two listings, one per mode. Promo codes are not applied in
+this slice (codes=()); the effective price is the shelf price.
 Never purchases, never adds to cart, never tests a promo code.
 """
 
@@ -27,6 +27,7 @@ from .models import MIN_HUNT_PRICE_SGD, canonical_from_name, listing_key
 from .names import clean_to_key
 from .parsers import (
     asher,
+    astor,
     cellarbration,
     ishopchangi,
     krisshop,
@@ -277,6 +278,7 @@ async def _scrape_sg_urllib(stamp):
                              (asher.scrape, asher.RETAILER),
                              (pivene.scrape, pivene.RETAILER),
                              (lmdw.scrape, lmdw.RETAILER),
+                             (maltwineasia.scrape, maltwineasia.RETAILER),
                              (krisshop.scrape_whisky, krisshop.RETAILER)):
         try:
             found, entry = await scrape(seen_at=stamp)
@@ -340,17 +342,6 @@ async def run_once(fx, max_pages, paneco_url=None,
         listings.extend(found)
         health.append(entry)
         _log_parser(entry)
-        # Blocked SG retailer: probe once, record the wall.
-        try:
-            _, entry = await maltwineasia.search(
-                pw, "whisky", seen_at=stamp)
-        except Exception as exc:
-            entry = _error_health(maltwineasia.RETAILER, exc)
-        health.append(entry)
-        _log_parser(entry)
-        notes.append("Malt & Wine Asia is bot-wall blocked; its three "
-                     "watchlist bottles (Macallan 18 2020, Glen Scotia 25, "
-                     "Glenfiddich 40) stay unverified.")
         # --- Overseas candidates: in stock, >= S$100, verified size.
         unique, duplicates = dedupe_listings(listings)
         if duplicates:
@@ -380,6 +371,7 @@ async def run_once(fx, max_pages, paneco_url=None,
         twe_health = []
         ww_health = []
         rb_health = []
+        astor_health = []
         sitemap_urls = reservebar.load_sitemap()
         if sitemap_urls is None:
             rb_health.append(ParserHealth(
@@ -392,8 +384,11 @@ async def run_once(fx, max_pages, paneco_url=None,
             found, entry = await twe.search(pw, term, seen_at=stamp)
             twe_health.append(entry)
             prices_by_term.setdefault(term, []).extend(found)
-            found, entry = await whiskyworld.search(pw, term, seen_at=stamp)
+            found, entry = await whiskyworld.search(term, seen_at=stamp)
             ww_health.append(entry)
+            prices_by_term.setdefault(term, []).extend(found)
+            found, entry = await astor.search(term, seen_at=stamp)
+            astor_health.append(entry)
             prices_by_term.setdefault(term, []).extend(found)
             if sitemap_urls is not None:
                 found, entry = await reservebar.search(
@@ -408,6 +403,10 @@ async def run_once(fx, max_pages, paneco_url=None,
             entry = aggregate_health(whiskyworld.RETAILER, ww_health)
             health.append(entry)
             _log_parser(entry)
+        if astor_health:
+            entry = aggregate_health(astor.RETAILER, astor_health)
+            health.append(entry)
+            _log_parser(entry)
         if rb_health:
             entry = aggregate_health(reservebar.RETAILER, rb_health)
             health.append(entry)
@@ -420,7 +419,8 @@ async def run_once(fx, max_pages, paneco_url=None,
             _log_parser(entry)
         notes.append("Master of Malt, Wine.com and Total Wine are "
                      "bot-wall blocked; overseas benchmarks come from "
-                     "TWE, The Whisky World and ReserveBar only.")
+                     "TWE, The Whisky World, ReserveBar and Astor "
+                     "Wines only.")
     # --- Comparisons for every SG listing.
     groq_available = bool(os.environ.get("GROQ_API_KEY"))
     if not groq_available:

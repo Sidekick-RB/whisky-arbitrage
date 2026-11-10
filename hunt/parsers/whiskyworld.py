@@ -15,6 +15,12 @@ out-of-stock markers ("product_zero_stock" / "--out-of-stock",
 classes present in the site stylesheet); no out-of-stock card was
 observed on the live page, so the negative path is unvalidated.
 
+The driver is plain urllib, not a browser: both the search and the
+product pages are server-rendered and curl-friendly, and the 10 Nov
+2026 Fargate run returned zero cards from the browser driver while
+the same pages parsed fine via curl — the datacenter IP, not the
+selectors, was the problem.
+
 Prices are GBP, VAT included. Only in-stock prices count downstream.
 """
 
@@ -32,8 +38,7 @@ from .base import (
     MAX_TILES_PER_PAGE,
     PAGE_DELAY_S,
     detect_bot_wall,
-    goto_with_retries,
-    new_stealth_context,
+    fetch_text,
     parse_price,
     parse_size_ml,
 )
@@ -146,17 +151,37 @@ def parse_search_html(html, page_url, seen_at):
     return cards, len(chunks) - 1
 
 
-async def search(pw, query, max_pages=MAX_SEARCH_PAGES,
+_PAGE_TITLE_RE = re.compile(r"<title[^>]*>([^<]*)</title>", re.I)
+
+
+def _page_title(html):
+    """Page <title> text, or None — a diagnostic for zero-card pages.
+
+    When a search parses no cards, the title distinguishes a
+    challenge page from genuinely empty results in the next run's
+    health detail."""
+    assert isinstance(html, str), "html must be a string"
+    match = _PAGE_TITLE_RE.search(html)
+    if match is None:
+        return None
+    title = html_unescape(match.group(1)).strip()
+    assert isinstance(title, str)
+    return title or None
+
+
+async def search(query, max_pages=MAX_SEARCH_PAGES,
                  delay_s=PAGE_DELAY_S, seen_at="",
                  search_url_override=None):
-    """Search The Whisky World for one query. Returns (prices, health).
+    """Search The Whisky World for one query (plain urllib, no
+    browser). Returns (prices, health).
 
     Bounded: at most max_pages search pages; at most MAX_SIZE_FETCHES
     product-page fetches for sizes. A card whose product page yields
     no size is dropped (an unverified size never becomes a benchmark).
-    A bot-wall page ends the run as "blocked".
+    A bot-wall page ends the run as "blocked". A search page that
+    loads but yields no cards records its <title> so the next run
+    can tell a challenge page from empty results.
     """
-    assert pw is not None, "playwright handle required"
     assert isinstance(query, str) and query.strip(), "query required"
     assert 1 <= max_pages <= MAX_PAGES, "max_pages out of bounds"
     assert delay_s >= 0, "delay must be non-negative"
@@ -166,57 +191,50 @@ async def search(pw, query, max_pages=MAX_SEARCH_PAGES,
     assert stamp, "seen_at timestamp required"
     base = search_url_override or search_url(query)
     assert base.startswith("http"), "search URL must be absolute"
-    browser, context = await new_stealth_context(pw)
-    assert browser is not None and context is not None
     all_prices = []
     pages_scanned = 0
     tiles_seen = 0
     blocked_wall = ""
     blocked_at = 0
-    try:
-        page = await context.new_page()
-        assert page is not None, "page creation failed"
-        for page_no in range(1, max_pages + 1):
-            url = base if page_no == 1 else base + "?page=" + str(page_no)
-            reached = await goto_with_retries(page, url)
-            if not reached:
+    first_title = None
+    for page_no in range(1, max_pages + 1):
+        url = base if page_no == 1 else base + "?page=" + str(page_no)
+        html = fetch_text(url)
+        if html is None:
+            blocked_at = page_no
+            break
+        try:
+            cards, seen = parse_search_html(html, url, stamp)
+        except ValueError as exc:
+            if str(exc).startswith("blocked:"):
+                blocked_wall = str(exc)[len("blocked:"):]
                 blocked_at = page_no
                 break
-            html = await page.content()
-            assert isinstance(html, str) and len(html) > 0
-            try:
-                cards, seen = parse_search_html(html, url, stamp)
-            except ValueError as exc:
-                if str(exc).startswith("blocked:"):
-                    blocked_wall = str(exc)[len("blocked:"):]
-                    blocked_at = page_no
-                    break
-                raise
-            tiles_seen += seen
-            pages_scanned += 1
-            for index, (name, price, product_url, in_stock) in enumerate(
-                    cards):
-                if index >= MAX_SIZE_FETCHES:
-                    break
-                if not in_stock:
-                    continue
-                reached = await goto_with_retries(page, product_url)
-                if not reached:
-                    continue
-                product_html = await page.content()
-                size_ml = parse_product_html(product_html)
-                if size_ml is None:
-                    continue
-                all_prices.append(OverseasPrice(
-                    retailer=RETAILER, country=COUNTRY, currency=CURRENCY,
-                    price=price, size_ml=size_ml, in_stock=in_stock,
-                    url=product_url, name=name))
-                assert len(all_prices) <= MAX_LISTINGS, "price cap hit"
-            if page_no >= max_pages:
+            raise
+        tiles_seen += seen
+        pages_scanned += 1
+        if not cards and first_title is None:
+            first_title = _page_title(html)
+        for index, (name, price, product_url, in_stock) in enumerate(
+                cards):
+            if index >= MAX_SIZE_FETCHES:
                 break
-            await asyncio.sleep(delay_s)
-    finally:
-        await browser.close()
+            if not in_stock:
+                continue
+            product_html = fetch_text(product_url)
+            if product_html is None:
+                continue
+            size_ml = parse_product_html(product_html)
+            if size_ml is None:
+                continue
+            all_prices.append(OverseasPrice(
+                retailer=RETAILER, country=COUNTRY, currency=CURRENCY,
+                price=price, size_ml=size_ml, in_stock=in_stock,
+                url=product_url, name=name))
+            assert len(all_prices) <= MAX_LISTINGS, "price cap hit"
+        if page_no >= max_pages:
+            break
+        await asyncio.sleep(delay_s)
     if blocked_wall:
         status = "blocked"
         detail = "bot wall (%s) at page %d" % (blocked_wall, blocked_at)
@@ -226,6 +244,8 @@ async def search(pw, query, max_pages=MAX_SEARCH_PAGES,
     elif len(all_prices) == 0:
         status = "zero-items"
         detail = "pages loaded but no sized in-stock prices parsed"
+        if first_title is not None:
+            detail += " (first page title: %s)" % first_title[:80]
     else:
         status = "ok"
         detail = "%d cards seen, %d priced" % (tiles_seen, len(all_prices))

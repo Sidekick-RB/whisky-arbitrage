@@ -1,10 +1,12 @@
 """Unit tests for the bot-wall-only parsers (MoM, Wine.com,
-Total Wine, Malt & Wine Asia) and the shared classify_page helper.
+Total Wine) and the shared classify_page helper.
 
 Fixture: tests/fixtures/bot-wall-cloudflare.html — a real Cloudflare
 challenge page captured by curl 9 Nov 2026. These modules have no
 price parser: the tests assert the wall is classified "blocked" and
-that no price can ever come out of them.
+that no price can ever come out of them. Malt & Wine Asia used to
+live here; since 10 Nov 2026 it has a real Store API parser
+(hunt/parsers/maltwineasia.py, tests/test_maltwineasia.py).
 """
 
 import os
@@ -12,7 +14,6 @@ import unittest
 
 from hunt.parsers.blocked import classify_page
 from hunt.parsers.masterofmalt import search_url as mom_url
-from hunt.parsers.maltwineasia import search_url as mwa_url
 from hunt.parsers.totalwine import search_url as tw_url
 from hunt.parsers.winecom import search_url as wine_url
 
@@ -46,6 +47,18 @@ class ClassifyPageTest(unittest.TestCase):
         assert kind == "loaded"
         self.assertEqual(kind, "loaded")
 
+    def test_turnstile_challenge_is_blocked(self):
+        # 10 Nov 2026: The Whisky Exchange serves a Turnstile
+        # challenge page that the old markers missed — the run
+        # parsed zero cards instead of reporting "blocked".
+        html = ("<html><body><div>Verify you are human</div>"
+                "<script src=\"https://challenges.cloudflare.com/"
+                "turnstile/v0/api.js\"></script></body></html>")
+        kind, wall = classify_page(html)
+        assert kind == "blocked"
+        assert wall == "cloudflare"
+        self.assertEqual(kind, "blocked")
+
 
 class SearchUrlTest(unittest.TestCase):
     def test_urls(self):
@@ -55,7 +68,6 @@ class SearchUrlTest(unittest.TestCase):
             "https://www.wine.com/search?text=")
         assert tw_url("Glenfarclas 25").startswith(
             "https://www.totalwine.com/search?text=")
-        assert mwa_url("Macallan 18") == "https://maltwineasia.com/"
         self.assertTrue(mom_url("Macallan 18").startswith(
             "https://www.masterofmalt.com/search/?q="))
 

@@ -225,7 +225,8 @@ class ScrapeIsolationTest(unittest.TestCase):
         # first Fargate run. One parser raising must now be recorded
         # as an error entry while the other parsers still run.
         from hunt.parsers import (
-            asher, krisshop, lmdw, pivene, spirited, tipsy, tlc)
+            asher, krisshop, lmdw, maltwineasia, pivene, spirited,
+            tipsy, tlc)
 
         def _ok(retailer):
             async def _scrape(seen_at=""):
@@ -246,6 +247,7 @@ class ScrapeIsolationTest(unittest.TestCase):
             (asher, "scrape", asher.scrape),
             (pivene, "scrape", pivene.scrape),
             (lmdw, "scrape", lmdw.scrape),
+            (maltwineasia, "scrape", maltwineasia.scrape),
             (krisshop, "scrape_whisky", krisshop.scrape_whisky),
         ]
         tlc.scrape = _ok(tlc.RETAILER)
@@ -254,6 +256,7 @@ class ScrapeIsolationTest(unittest.TestCase):
         asher.scrape = _ok(asher.RETAILER)
         pivene.scrape = _ok(pivene.RETAILER)
         lmdw.scrape = _ok(lmdw.RETAILER)
+        maltwineasia.scrape = _ok(maltwineasia.RETAILER)
         krisshop.scrape_whisky = _ok(krisshop.RETAILER)
         try:
             captured = io.StringIO()
@@ -263,26 +266,26 @@ class ScrapeIsolationTest(unittest.TestCase):
             for module, name, fn in saved:
                 setattr(module, name, fn)
         assert listings == []
-        assert len(health) == 7
+        assert len(health) == 8
         by_retailer = {entry.retailer: entry for entry in health}
         assert by_retailer["Spirited"].status == "error"
         assert "RuntimeError" in by_retailer["Spirited"].detail
         assert by_retailer["Spirited"].items_found == 0
         for retailer in ("The Liquid Collection", "Tipsy Topsy", "Asher",
-                         "PIVENE", "LMDW", "KrisShop"):
+                         "PIVENE", "LMDW", "Malt & Wine Asia", "KrisShop"):
             assert by_retailer[retailer].status == "ok"
         # Progress logging: one flushed line per parser, so a 15-minute
         # CloudWatch check can see where a run is — including the
         # crashed one.
         lines = captured.getvalue().strip().split("\n")
-        assert len(lines) == 7
+        assert len(lines) == 8
         assert any(line.startswith("Spirited: 0 listings, error")
                    for line in lines)
         assert any(line.startswith("The Liquid Collection: 0 listings, ok")
                    for line in lines)
-        self.assertEqual(len(health), 7)
+        self.assertEqual(len(health), 8)
         self.assertEqual(by_retailer["Spirited"].status, "error")
-        self.assertEqual(len(lines), 7)
+        self.assertEqual(len(lines), 8)
 
 
 if __name__ == "__main__":

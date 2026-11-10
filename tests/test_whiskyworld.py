@@ -10,9 +10,11 @@ class exists in the site stylesheet; no live out-of-stock card was
 observed, so that path is unvalidated against a real card).
 """
 
+import asyncio
 import os
 import unittest
 
+import hunt.parsers.whiskyworld as ww
 from hunt.parsers.whiskyworld import (
     parse_product_html,
     parse_search_html,
@@ -78,6 +80,51 @@ class FixtureTest(unittest.TestCase):
     def test_product_page_no_size(self):
         assert parse_product_html("<html><body>no size here</body></html>") is None
         self.assertIsNone(parse_product_html("<html></html>"))
+
+
+class UrllibDriverTest(unittest.TestCase):
+    def test_search_uses_plain_http_not_browser(self):
+        # 10 Nov 2026: the browser driver returned zero cards on
+        # Fargate while the same pages parsed fine via curl. The
+        # driver is now urllib; this test proves the wiring with a
+        # stubbed fetch_text (no network, no browser).
+        search_html = _load(SEARCH)
+        product_html = _load(PRODUCT)
+        calls = []
+
+        def _fake_fetch(url):
+            assert url.startswith("https://www.thewhiskyworld.com")
+            calls.append(url)
+            if "/search/" in url:
+                return search_html
+            return product_html
+
+        saved = ww.fetch_text
+        ww.fetch_text = _fake_fetch
+        try:
+            prices, health = asyncio.run(
+                ww.search("ballantines 23", seen_at=SEEN_AT))
+        finally:
+            ww.fetch_text = saved
+        assert len(prices) == 2
+        assert health.status == "ok"
+        assert all(item.size_ml == 700 for item in prices)
+        assert all(item.currency == "GBP" for item in prices)
+        assert len(calls) == 3
+        self.assertEqual(len(prices), 2)
+        self.assertEqual(health.status, "ok")
+
+    def test_failed_fetch_is_blocked_not_crash(self):
+        saved = ww.fetch_text
+        ww.fetch_text = lambda url: None
+        try:
+            prices, health = asyncio.run(
+                ww.search("ballantines 23", seen_at=SEEN_AT))
+        finally:
+            ww.fetch_text = saved
+        assert prices == []
+        assert health.status == "blocked"
+        self.assertEqual(health.status, "blocked")
 
 
 if __name__ == "__main__":

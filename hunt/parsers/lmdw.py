@@ -27,7 +27,7 @@ RETAILER = "LMDW"
 BASE_URL = "https://www.whisky.sg"
 API_URL = BASE_URL + "/wp-json/wc/store/v1/products?per_page=100"
 PER_PAGE = 100
-MAX_PAGES = 10
+MAX_PAGES = 12
 
 
 def _volume_ml(product):

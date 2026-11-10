@@ -54,6 +54,10 @@ class ParseHelpersTest(unittest.TestCase):
         assert parse_size_ml("70cl") == 700
         assert parse_size_ml("50cl") == 500
         assert parse_size_ml("1.5L") == 1500
+        # 10 Nov 2026: LMDW gift sets carry Volume "0cl" — a zero
+        # size is not a bottle and must never crash the run.
+        assert parse_size_ml("0cl") is None
+        assert parse_size_ml("0ml") is None
         self.assertEqual(parse_size_ml("700ml"), 700)
         self.assertEqual(parse_size_ml("1L"), 1000)
 

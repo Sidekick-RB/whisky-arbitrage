@@ -37,6 +37,9 @@ _PRICE_RE = re.compile(r"\$?\s*([\d,]+(?:\.\d{1,2})?)")
 BOT_WALL_MARKERS = (
     ("Just a moment...", "cloudflare"),
     ("challenges.cloudflare.com", "cloudflare"),
+    ("Verify you are human", "cloudflare"),
+    ("cf-turnstile", "cloudflare"),
+    ("turnstile", "cloudflare"),
     ("Vercel Security Checkpoint", "vercel-checkpoint"),
     ("px-captcha", "perimeterx"),
     ("PerimeterX", "perimeterx"),
@@ -146,7 +149,9 @@ def parse_price_sgd(text):
 def parse_size_ml(text):
     """Parse a bottle size such as "700ml", "1L", "750ml" or "70cl".
 
-    Returns millilitres as an int, or None when unparseable.
+    Returns millilitres as an int, or None when unparseable — or
+    when the size is zero ("0cl" on a gift set or merch item means
+    "no bottle size", never a crash: a zero size is not a bottle).
     """
     assert isinstance(text, str), "size text must be a string"
     match = _SIZE_RE.search(text.strip())
@@ -160,8 +165,7 @@ def parse_size_ml(text):
         result = int(round(amount * 10))
     else:
         result = int(round(amount))
-    assert result > 0, "parsed size must be positive"
-    return result
+    return result if result > 0 else None
 
 
 async def _block_heavy_resources(route):

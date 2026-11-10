@@ -1,0 +1,444 @@
+[
+ {
+  "id": 30096,
+  "name": "The Macallan Sherry Oak 18 Years Old, 2022 Release",
+  "permalink": "https://maltwineasia.com/product/the-macallan-sherry-oak-18-years-old-2022-release/",
+  "prices": {
+   "price": "65000",
+   "regular_price": "65000",
+   "sale_price": "65000",
+   "price_range": null,
+   "currency_code": "SGD",
+   "currency_symbol": "$",
+   "currency_minor_unit": 2,
+   "currency_decimal_separator": ".",
+   "currency_thousand_separator": ",",
+   "currency_prefix": "$",
+   "currency_suffix": ""
+  },
+  "is_in_stock": true,
+  "attributes": [
+   {
+    "id": 3,
+    "name": "Brands",
+    "taxonomy": "pa_brands",
+    "has_variations": false,
+    "terms": [
+     {
+      "id": 302,
+      "name": "The Macallan",
+      "slug": "the-macallan"
+     }
+    ]
+   },
+   {
+    "id": 5,
+    "name": "Country of Origin",
+    "taxonomy": "pa_country-of-origin",
+    "has_variations": false,
+    "terms": [
+     {
+      "id": 244,
+      "name": "Scotland",
+      "slug": "scotland"
+     }
+    ]
+   },
+   {
+    "id": 7,
+    "name": "Location",
+    "taxonomy": "pa_location",
+    "has_variations": false,
+    "terms": [
+     {
+      "id": 1255,
+      "name": "Craigellachie",
+      "slug": "craigellachie"
+     }
+    ]
+   },
+   {
+    "id": 10,
+    "name": "Alcohol by Volume",
+    "taxonomy": "pa_alcohol-by-volume",
+    "has_variations": false,
+    "terms": [
+     {
+      "id": 334,
+      "name": "43.0%",
+      "slug": "43-0"
+     }
+    ]
+   },
+   {
+    "id": 11,
+    "name": "Volume",
+    "taxonomy": "pa_volume",
+    "has_variations": false,
+    "terms": [
+     {
+      "id": 671,
+      "name": "700 ML",
+      "slug": "700-ml"
+     }
+    ]
+   }
+  ],
+  "categories": [
+   {
+    "id": 532,
+    "name": "Scotch",
+    "slug": "scotch-whisky",
+    "link": "https://maltwineasia.com/product-category/whisky/scotch-whisky/"
+   },
+   {
+    "id": 323,
+    "name": "Spirits",
+    "slug": "spirits",
+    "link": "https://maltwineasia.com/product-category/spirits/"
+   },
+   {
+    "id": 317,
+    "name": "Vintage &amp; Collectibles",
+    "slug": "vintage-collectibles",
+    "link": "https://maltwineasia.com/product-category/vintage-collectibles/"
+   },
+   {
+    "id": 225,
+    "name": "Whisky",
+    "slug": "whisky",
+    "link": "https://maltwineasia.com/product-category/whisky/"
+   }
+  ]
+ },
+ {
+  "id": 30092,
+  "name": "The Macallan Sherry Oak 18 Years Old, 2020 Release",
+  "permalink": "https://maltwineasia.com/product/the-macallan-sherry-oak-18-years-old-2020-release/",
+  "prices": {
+   "price": "68000",
+   "regular_price": "68000",
+   "sale_price": "68000",
+   "price_range": null,
+   "currency_code": "SGD",
+   "currency_symbol": "$",
+   "currency_minor_unit": 2,
+   "currency_decimal_separator": ".",
+   "currency_thousand_separator": ",",
+   "currency_prefix": "$",
+   "currency_suffix": ""
+  },
+  "is_in_stock": true,
+  "attributes": [
+   {
+    "id": 3,
+    "name": "Brands",
+    "taxonomy": "pa_brands",
+    "has_variations": false,
+    "terms": [
+     {
+      "id": 302,
+      "name": "The Macallan",
+      "slug": "the-macallan"
+     }
+    ]
+   },
+   {
+    "id": 5,
+    "name": "Country of Origin",
+    "taxonomy": "pa_country-of-origin",
+    "has_variations": false,
+    "terms": [
+     {
+      "id": 244,
+      "name": "Scotland",
+      "slug": "scotland"
+     }
+    ]
+   },
+   {
+    "id": 7,
+    "name": "Location",
+    "taxonomy": "pa_location",
+    "has_variations": false,
+    "terms": [
+     {
+      "id": 1255,
+      "name": "Craigellachie",
+      "slug": "craigellachie"
+     }
+    ]
+   },
+   {
+    "id": 10,
+    "name": "Alcohol by Volume",
+    "taxonomy": "pa_alcohol-by-volume",
+    "has_variations": false,
+    "terms": [
+     {
+      "id": 334,
+      "name": "43.0%",
+      "slug": "43-0"
+     }
+    ]
+   },
+   {
+    "id": 11,
+    "name": "Volume",
+    "taxonomy": "pa_volume",
+    "has_variations": false,
+    "terms": [
+     {
+      "id": 671,
+      "name": "700 ML",
+      "slug": "700-ml"
+     }
+    ]
+   }
+  ],
+  "categories": [
+   {
+    "id": 532,
+    "name": "Scotch",
+    "slug": "scotch-whisky",
+    "link": "https://maltwineasia.com/product-category/whisky/scotch-whisky/"
+   },
+   {
+    "id": 323,
+    "name": "Spirits",
+    "slug": "spirits",
+    "link": "https://maltwineasia.com/product-category/spirits/"
+   },
+   {
+    "id": 317,
+    "name": "Vintage &amp; Collectibles",
+    "slug": "vintage-collectibles",
+    "link": "https://maltwineasia.com/product-category/vintage-collectibles/"
+   },
+   {
+    "id": 225,
+    "name": "Whisky",
+    "slug": "whisky",
+    "link": "https://maltwineasia.com/product-category/whisky/"
+   }
+  ]
+ },
+ {
+  "id": 22073,
+  "name": "Samaroli 1989 Macallan Magnifico 32 Year Old Cask #6690 (2022)",
+  "permalink": "https://maltwineasia.com/product/samaroli-1989-macallan-magnifico-32-year-old-cask-6690-2022/",
+  "prices": {
+   "price": "1332500",
+   "regular_price": "1332500",
+   "sale_price": "1332500",
+   "price_range": null,
+   "currency_code": "SGD",
+   "currency_symbol": "$",
+   "currency_minor_unit": 2,
+   "currency_decimal_separator": ".",
+   "currency_thousand_separator": ",",
+   "currency_prefix": "$",
+   "currency_suffix": ""
+  },
+  "is_in_stock": true,
+  "attributes": [
+   {
+    "id": 3,
+    "name": "Brands",
+    "taxonomy": "pa_brands",
+    "has_variations": false,
+    "terms": [
+     {
+      "id": 1270,
+      "name": "Samaroli",
+      "slug": "samaroli-whisky"
+     }
+    ]
+   },
+   {
+    "id": 5,
+    "name": "Country of Origin",
+    "taxonomy": "pa_country-of-origin",
+    "has_variations": false,
+    "terms": [
+     {
+      "id": 244,
+      "name": "Scotland",
+      "slug": "scotland"
+     }
+    ]
+   },
+   {
+    "id": 10,
+    "name": "Alcohol by Volume",
+    "taxonomy": "pa_alcohol-by-volume",
+    "has_variations": false,
+    "terms": [
+     {
+      "id": 341,
+      "name": "42.0%",
+      "slug": "42-0"
+     }
+    ]
+   },
+   {
+    "id": 11,
+    "name": "Volume",
+    "taxonomy": "pa_volume",
+    "has_variations": false,
+    "terms": [
+     {
+      "id": 671,
+      "name": "700 ML",
+      "slug": "700-ml"
+     }
+    ]
+   }
+  ],
+  "categories": [
+   {
+    "id": 532,
+    "name": "Scotch",
+    "slug": "scotch-whisky",
+    "link": "https://maltwineasia.com/product-category/whisky/scotch-whisky/"
+   },
+   {
+    "id": 323,
+    "name": "Spirits",
+    "slug": "spirits",
+    "link": "https://maltwineasia.com/product-category/spirits/"
+   },
+   {
+    "id": 317,
+    "name": "Vintage &amp; Collectibles",
+    "slug": "vintage-collectibles",
+    "link": "https://maltwineasia.com/product-category/vintage-collectibles/"
+   },
+   {
+    "id": 225,
+    "name": "Whisky",
+    "slug": "whisky",
+    "link": "https://maltwineasia.com/product-category/whisky/"
+   }
+  ]
+ },
+ {
+  "id": 32715,
+  "name": "Ch\u00e2teau Beychevelle 2019",
+  "permalink": "https://maltwineasia.com/product/chateau-beychevelle-2019/",
+  "prices": {
+   "price": "20800",
+   "regular_price": "20800",
+   "sale_price": "20800",
+   "price_range": null,
+   "currency_code": "SGD",
+   "currency_symbol": "$",
+   "currency_minor_unit": 2,
+   "currency_decimal_separator": ".",
+   "currency_thousand_separator": ",",
+   "currency_prefix": "$",
+   "currency_suffix": ""
+  },
+  "is_in_stock": true,
+  "attributes": [
+   {
+    "id": 3,
+    "name": "Brands",
+    "taxonomy": "pa_brands",
+    "has_variations": false,
+    "terms": [
+     {
+      "id": 260,
+      "name": "Ch\u00e2teau Beychevelle",
+      "slug": "chateau-beychevelle"
+     }
+    ]
+   },
+   {
+    "id": 5,
+    "name": "Country of Origin",
+    "taxonomy": "pa_country-of-origin",
+    "has_variations": false,
+    "terms": [
+     {
+      "id": 249,
+      "name": "France",
+      "slug": "france"
+     }
+    ]
+   },
+   {
+    "id": 7,
+    "name": "Location",
+    "taxonomy": "pa_location",
+    "has_variations": false,
+    "terms": [
+     {
+      "id": 276,
+      "name": "Bordeaux",
+      "slug": "bordeaux"
+     }
+    ]
+   },
+   {
+    "id": 19,
+    "name": "Types",
+    "taxonomy": "pa_types",
+    "has_variations": false,
+    "terms": [
+     {
+      "id": 1332,
+      "name": "Red Wine",
+      "slug": "red-wine"
+     }
+    ]
+   },
+   {
+    "id": 13,
+    "name": "Vintage",
+    "taxonomy": "pa_vintage",
+    "has_variations": false,
+    "terms": [
+     {
+      "id": 796,
+      "name": "2018",
+      "slug": "2018"
+     }
+    ]
+   },
+   {
+    "id": 10,
+    "name": "Alcohol by Volume",
+    "taxonomy": "pa_alcohol-by-volume",
+    "has_variations": false,
+    "terms": [
+     {
+      "id": 370,
+      "name": "14.5%",
+      "slug": "14-5"
+     }
+    ]
+   }
+  ],
+  "categories": [
+   {
+    "id": 784,
+    "name": "Red",
+    "slug": "red",
+    "link": "https://maltwineasia.com/product-category/wine/red/"
+   },
+   {
+    "id": 317,
+    "name": "Vintage &amp; Collectibles",
+    "slug": "vintage-collectibles",
+    "link": "https://maltwineasia.com/product-category/vintage-collectibles/"
+   },
+   {
+    "id": 226,
+    "name": "Wine",
+    "slug": "wine",
+    "link": "https://maltwineasia.com/product-category/wine/"
+   }
+  ]
+ }
+]

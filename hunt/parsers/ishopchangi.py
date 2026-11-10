@@ -240,20 +240,30 @@ def _has_next(html, tile_count, page_no):
     return tile_count >= PAGE_SIZE
 
 
-async def _fetch_page(page, url):
+async def _fetch_page(page, url, retry_empty=False):
     """Load one search page and extract tile records. Returns
-    (html, records, reached): records is None when extraction failed."""
+    (html, records, reached): records is None when extraction failed.
+
+    The site is a React SPA: on a slow connection the shell loads
+    but no product links render inside a short wait (10 Nov 2026
+    Fargate run: both modes came back with zero tiles). So the
+    product-link wait is long, and when retry_empty is set (first
+    page of a mode, where the SPA is still booting) an empty
+    extraction waits once more and re-extracts before giving up."""
     assert page is not None, "page required"
     assert isinstance(url, str) and url.startswith("http")
+    assert isinstance(retry_empty, bool), "retry flag must be bool"
     reached = await goto_with_retries(page, url)
     assert isinstance(reached, bool), "goto must return a bool"
     if not reached:
         return "", None, False
-    try:
-        await page.wait_for_selector(
-            "a[href*='/en/product/']", timeout=15000)
-    except Exception:
-        pass
+    for _attempt in range(2):
+        try:
+            await page.wait_for_selector(
+                "a[href*='/en/product/']", timeout=45000)
+            break
+        except Exception:
+            pass
     try:
         await page.wait_for_load_state("networkidle", timeout=10000)
     except Exception:
@@ -265,6 +275,19 @@ async def _fetch_page(page, url):
     except Exception:
         return html, None, True
     assert isinstance(records, list), "extract must return a list"
+    if not records and retry_empty:
+        try:
+            await page.wait_for_selector(
+                "a[href*='/en/product/']", timeout=30000)
+        except Exception:
+            pass
+        try:
+            records = await page.evaluate(_EXTRACT_JS)
+        except Exception:
+            return html, None, True
+        assert isinstance(records, list), "re-extract must return a list"
+        html = await page.content()
+        assert isinstance(html, str) and len(html) > 0
     return html, records, True
 
 
@@ -299,7 +322,8 @@ async def scrape_mode(pw, mode, seen_at="", max_pages=MAX_MODE_PAGES,
                 url = search_url_override
             else:
                 url = search_url(mode, query, page_no)
-            html, records, reached = await _fetch_page(page, url)
+            html, records, reached = await _fetch_page(
+                page, url, retry_empty=(page_no == 1))
             if not reached:
                 failed_kind = "load"
                 failed_at = page_no

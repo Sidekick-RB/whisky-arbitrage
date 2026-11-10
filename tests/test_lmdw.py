@@ -83,6 +83,27 @@ class FixtureTest(unittest.TestCase):
         assert len(listings) == 0
         self.assertEqual(len(listings), 0)
 
+    def test_zero_volume_is_unverified_size(self):
+        # 10 Nov 2026: eight LMDW gift sets/merch items carry Volume
+        # "0cl" (e.g. TEELING BLACK HIPFLASK IN GIFTBOX). The old
+        # parse_size_ml assertion crashed the whole parser on them;
+        # a zero size now yields an unverified size, never a crash.
+        merch = [{
+            "name": "TEELING BLACK HIPFLASK IN GIFTBOX",
+            "permalink": "https://www.whisky.sg/product/teeling-hipflask/",
+            "prices": {"price": "4500", "currency_code": "SGD",
+                       "currency_minor_unit": 2},
+            "is_in_stock": True,
+            "attributes": [{"name": "Volume",
+                            "terms": [{"name": "0cl"}]}],
+            "categories": [{"name": "Irish Whiskey"}],
+        }]
+        listings, _, _, _ = parse_products_json(merch, SEEN_AT)
+        assert len(listings) == 1
+        assert listings[0].size_ml is None
+        assert listings[0].size_verified is False
+        self.assertIsNone(listings[0].size_ml)
+
 
 if __name__ == "__main__":
     unittest.main()
