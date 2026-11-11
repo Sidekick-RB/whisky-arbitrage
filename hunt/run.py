@@ -32,10 +32,14 @@ from .parsers import (
     asher,
     astor,
     cellarbration,
+    dramfellows,
+    flaviar,
     ishopchangi,
     krisshop,
     lmdw,
+    lochfyne,
     maltwineasia,
+    mashgrape,
     masterofmalt,
     paneco,
     pivene,
@@ -45,8 +49,10 @@ from .parsers import (
     tlc,
     totalwine,
     twe,
+    whiskybarrel,
     whiskyworld,
     winecom,
+    woodencork,
 )
 from .parsers.base import MAX_PAGES
 from .report import (
@@ -513,6 +519,12 @@ async def run_once(fx, max_pages, paneco_url=None,
         ww_health = []
         rb_health = []
         astor_health = []
+        lochfyne_health = []
+        whiskybarrel_health = []
+        dramfellows_health = []
+        woodencork_health = []
+        mashgrape_health = []
+        flaviar_health = []
         sitemap_urls = reservebar.load_sitemap()
         if sitemap_urls is None:
             rb_health.append(ParserHealth(
@@ -560,6 +572,72 @@ async def run_once(fx, max_pages, paneco_url=None,
                 prices_by_term.setdefault(term, []).extend(found)
                 _record_timeout(reservebar.RETAILER, timed_out,
                                 retailer_timeouts, retailer_skipped)
+            if lochfyne.RETAILER not in retailer_skipped:
+                found, entry, timed_out = await _search_bounded(
+                    lochfyne.search(
+                        term,
+                        wanted={item.canonical for item in terms[term]},
+                        seen_at=stamp),
+                    lochfyne.RETAILER)
+                lochfyne_health.append(entry)
+                prices_by_term.setdefault(term, []).extend(found)
+                _record_timeout(lochfyne.RETAILER, timed_out,
+                                retailer_timeouts, retailer_skipped)
+            if whiskybarrel.RETAILER not in retailer_skipped:
+                found, entry, timed_out = await _search_bounded(
+                    whiskybarrel.search(
+                        term,
+                        wanted={item.canonical for item in terms[term]},
+                        seen_at=stamp),
+                    whiskybarrel.RETAILER)
+                whiskybarrel_health.append(entry)
+                prices_by_term.setdefault(term, []).extend(found)
+                _record_timeout(whiskybarrel.RETAILER, timed_out,
+                                retailer_timeouts, retailer_skipped)
+            if dramfellows.RETAILER not in retailer_skipped:
+                found, entry, timed_out = await _search_bounded(
+                    dramfellows.search(
+                        term,
+                        wanted={item.canonical for item in terms[term]},
+                        seen_at=stamp),
+                    dramfellows.RETAILER)
+                dramfellows_health.append(entry)
+                prices_by_term.setdefault(term, []).extend(found)
+                _record_timeout(dramfellows.RETAILER, timed_out,
+                                retailer_timeouts, retailer_skipped)
+            if woodencork.RETAILER not in retailer_skipped:
+                found, entry, timed_out = await _search_bounded(
+                    woodencork.search(
+                        term,
+                        wanted={item.canonical for item in terms[term]},
+                        seen_at=stamp),
+                    woodencork.RETAILER)
+                woodencork_health.append(entry)
+                prices_by_term.setdefault(term, []).extend(found)
+                _record_timeout(woodencork.RETAILER, timed_out,
+                                retailer_timeouts, retailer_skipped)
+            if mashgrape.RETAILER not in retailer_skipped:
+                found, entry, timed_out = await _search_bounded(
+                    mashgrape.search(
+                        term,
+                        wanted={item.canonical for item in terms[term]},
+                        seen_at=stamp),
+                    mashgrape.RETAILER)
+                mashgrape_health.append(entry)
+                prices_by_term.setdefault(term, []).extend(found)
+                _record_timeout(mashgrape.RETAILER, timed_out,
+                                retailer_timeouts, retailer_skipped)
+            if flaviar.RETAILER not in retailer_skipped:
+                found, entry, timed_out = await _search_bounded(
+                    flaviar.search(
+                        term,
+                        wanted={item.canonical for item in terms[term]},
+                        seen_at=stamp),
+                    flaviar.RETAILER)
+                flaviar_health.append(entry)
+                prices_by_term.setdefault(term, []).extend(found)
+                _record_timeout(flaviar.RETAILER, timed_out,
+                                retailer_timeouts, retailer_skipped)
             if term_no % OVERSEAS_PROGRESS_EVERY == 0 or \
                     term_no == len(chosen):
                 # Slice 6 went ~63 silent minutes and slice 10
@@ -591,6 +669,32 @@ async def run_once(fx, max_pages, paneco_url=None,
             entry = aggregate_health(reservebar.RETAILER, rb_health)
             health.append(entry)
             _log_parser(entry)
+        if lochfyne_health:
+            entry = aggregate_health(lochfyne.RETAILER, lochfyne_health)
+            health.append(entry)
+            _log_parser(entry)
+        if whiskybarrel_health:
+            entry = aggregate_health(whiskybarrel.RETAILER,
+                                     whiskybarrel_health)
+            health.append(entry)
+            _log_parser(entry)
+        if dramfellows_health:
+            entry = aggregate_health(dramfellows.RETAILER,
+                                     dramfellows_health)
+            health.append(entry)
+            _log_parser(entry)
+        if woodencork_health:
+            entry = aggregate_health(woodencork.RETAILER, woodencork_health)
+            health.append(entry)
+            _log_parser(entry)
+        if mashgrape_health:
+            entry = aggregate_health(mashgrape.RETAILER, mashgrape_health)
+            health.append(entry)
+            _log_parser(entry)
+        if flaviar_health:
+            entry = aggregate_health(flaviar.RETAILER, flaviar_health)
+            health.append(entry)
+            _log_parser(entry)
         # Blocked overseas retailers: probe once each, record the wall.
         probe_term = chosen[0] if chosen else "whisky"
         for module in (masterofmalt, winecom, totalwine):
@@ -599,8 +703,10 @@ async def run_once(fx, max_pages, paneco_url=None,
             _log_parser(entry)
         notes.append("Master of Malt, Wine.com and Total Wine are "
                      "bot-wall blocked; overseas benchmarks come from "
-                     "TWE, The Whisky World, ReserveBar and Astor "
-                     "Wines only.")
+                     "TWE, The Whisky World, ReserveBar, Astor Wines, "
+                     "Loch Fyne Whiskies, The Whisky Barrel, "
+                     "DramFellows, Wooden Cork, Mash & Grape and "
+                     "Flaviar.")
     # --- Comparisons for every SG listing.
     groq_fallback = bool(os.environ.get("GROQ_API_KEY"))
     notes.append("Name-cleaning via Bedrock %s; Groq fallback %s."

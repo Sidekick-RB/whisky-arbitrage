@@ -19,7 +19,7 @@ VERDICTS = ("qualifier", "close-find", "not-a-deal", "unverified",
 
 _FILLERS = ("single malt", "blended malt", "scotch whisky",
             "blended scotch whisky", "tennessee whiskey", "bourbon",
-            "whisky", "whiskey",
+            "scotch", "whisky", "whiskey",
             "with gift box", "w/ gift box", "gift box")
 
 

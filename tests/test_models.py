@@ -104,6 +104,18 @@ class CanonicalFromNameTest(unittest.TestCase):
         assert key == "glenfiddich-18yr"
         self.assertEqual(key, "glenfiddich-18yr")
 
+    def test_lone_scotch_stripped(self):
+        # "Scotch Single Malt" word order (Mash & Grape) must give
+        # the same key as "Single Malt Scotch Whisky" — the lone
+        # word "scotch" is a category word, like "bourbon".
+        key = canonical_from_name(
+            "Glenfiddich Scotch Single Malt 18 Year Old")
+        assert key == "glenfiddich-18yr"
+        assert canonical_from_name(
+            "Glenfiddich 18 Year Old Single Malt Scotch Whisky "
+            "700ml") == "glenfiddich-18yr"
+        self.assertEqual(key, "glenfiddich-18yr")
+
     def test_bare_whisky_dropped(self):
         key = canonical_from_name(
             "Glenmorangie 25 Years Single Malt Whisky 750ml")
