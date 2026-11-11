@@ -19,6 +19,7 @@ from hunt.parsers.twe import parse_search_html as twe_parse
 from hunt.report import ParserHealth
 from hunt.run import (
     MAX_NAME_CACHE_ENTRIES,
+    _order_terms,
     _record_timeout,
     _scrape_sg_urllib,
     _search_bounded,
@@ -218,7 +219,7 @@ class MatchOverseasTest(unittest.TestCase):
                       "Finish 70cl", 137.95),
             _overseas("Glenfarclas 25 Year Old 70cl", 225.00),
         ]
-        matched, calls = match_overseas(listing, prices, {}, 10)
+        matched, calls, groq = match_overseas(listing, prices, {}, 10)
         assert len(matched) == 1
         assert matched[0].price == 137.95
         assert calls == 0, "exact match must not spend Groq calls"
@@ -227,14 +228,14 @@ class MatchOverseasTest(unittest.TestCase):
     def test_no_match_no_budget(self):
         listing = _listing("TORMORE 16 ans", "tormore-16-ans")
         prices = [_overseas("Tormore 16 Year Old 70cl", 120.00)]
-        matched, calls = match_overseas(listing, prices, {}, 0)
+        matched, calls, groq = match_overseas(listing, prices, {}, 0)
         assert matched == []
         assert calls == 0
         self.assertEqual(matched, [])
 
     def test_no_prices(self):
         listing = _listing("Test Bottle 700ml", "test-bottle")
-        matched, calls = match_overseas(listing, [], {}, 10)
+        matched, calls, groq = match_overseas(listing, [], {}, 10)
         assert matched == []
         assert calls == 0
         self.assertEqual(matched, [])
@@ -259,12 +260,68 @@ class MatchOverseasTest(unittest.TestCase):
 
         run_module.clean_to_key = _raise
         try:
-            matched, calls = match_overseas(listing, prices, cache, 10)
+            matched, calls, groq = match_overseas(listing, prices, cache, 10)
         finally:
             run_module.clean_to_key = real_clean
         assert len(matched) == 1
         assert calls == 0
+        assert groq == 0, "cached names must not spend Groq calls"
         self.assertEqual(len(matched), 1)
+
+    def test_groq_budget_caps_fallback(self):
+        # The stub always reports Groq use; with a groq_budget of 1
+        # only the first cleaning may use Groq — later cleanings run
+        # Bedrock-only and stay unmatched when Bedrock is down.
+        listing = _listing("Test Bottle 18 Year Old 70cl",
+                           "test-bottle-18yr")
+        prices = [_overseas("Test Bottle 18 Yr. Old 70cl", 120.00),
+                  _overseas("Other Bottle 18 Yr. Old 70cl", 130.00)]
+        seen = []
+        import hunt.run as run_module
+        real_clean = run_module.clean_to_key
+
+        def stub_clean(name, allow_groq=True):
+            seen.append(allow_groq)
+            if not allow_groq:
+                return None, False
+            return "test-bottle-18yr", True
+
+        run_module.clean_to_key = stub_clean
+        try:
+            matched, calls, groq = match_overseas(
+                listing, prices, {}, 10, groq_budget=1)
+        finally:
+            run_module.clean_to_key = real_clean
+        assert groq == 1, "only one Groq fallback call allowed"
+        assert seen == [True, False, False], (
+            "Groq disabled after the budget is spent")
+        assert calls == 3, "all three names still attempted via Bedrock"
+        self.assertEqual(groq, 1)
+
+
+class OrderTermsTest(unittest.TestCase):
+    def test_most_expensive_first(self):
+        terms = {
+            "common bottle": [
+                _listing("Common 70cl", "common", price=120.0),
+                _listing("Common 70cl", "common", price=120.0)],
+            "rare bottle": [_listing("Rare 70cl", "rare", price=1500.0)],
+            "mid bottle": [_listing("Mid 70cl", "mid", price=300.0)],
+        }
+        ordered = _order_terms(terms)
+        assert ordered == ["rare bottle", "mid bottle", "common bottle"]
+        self.assertEqual(ordered[0], "rare bottle")
+
+    def test_ties_break_by_count_then_name(self):
+        terms = {
+            "b bottle": [_listing("B 70cl", "b", price=200.0)],
+            "a bottle": [_listing("A 70cl", "a", price=200.0),
+                         _listing("A 70cl", "a", price=200.0)],
+            "c bottle": [_listing("C 70cl", "c", price=200.0)],
+        }
+        ordered = _order_terms(terms)
+        assert ordered == ["a bottle", "b bottle", "c bottle"]
+        self.assertEqual(ordered, ["a bottle", "b bottle", "c bottle"])
 
 
 class PruneCacheTest(unittest.TestCase):
@@ -326,15 +383,15 @@ class PipelineTest(unittest.TestCase):
         import hunt.run as run_module
         real_clean = run_module.clean_to_key
 
-        def stub_clean(name):
+        def stub_clean(name, allow_groq=True):
             assert name, "clean_to_key must get a non-empty name"
             if "Jack Daniel's 10" in name:
-                return "jack-daniels-10yr"
-            return None
+                return "jack-daniels-10yr", False
+            return None, False
 
         run_module.clean_to_key = stub_clean
         try:
-            matched, calls = match_overseas(listing, prices, {}, 10)
+            matched, calls, groq = match_overseas(listing, prices, {}, 10)
         finally:
             run_module.clean_to_key = real_clean
         assert len(matched) == 1
@@ -342,6 +399,7 @@ class PipelineTest(unittest.TestCase):
         assert calls == 3, (
             "1 call for the listing name + 1 per in-stock overseas "
             "name; the out-of-stock Glenfarclas 25 is skipped")
+        assert groq == 0, "stub never uses the Groq fallback"
         result = compare(listing, matched, FX_9NOV, codes=(),
                          as_of="2026-11-09")
         assert result.verdict == "close-find"
@@ -358,7 +416,7 @@ class PipelineTest(unittest.TestCase):
         michter = [item for item in listings
                    if "Michter's" in item.name]
         assert len(michter) == 1
-        matched, _ = match_overseas(michter[0], prices, {}, 10)
+        matched, _, _ = match_overseas(michter[0], prices, {}, 10)
         assert matched == []
         result = compare(michter[0], matched, FX_9NOV, codes=(),
                          as_of="2026-11-09")

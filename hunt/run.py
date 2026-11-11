@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from .engine import compare
 from .fx import fetch_rates, fixed_rates
 from .models import MIN_HUNT_PRICE_SGD, canonical_from_name, listing_key
-from .names import BEDROCK_MODEL_ID, clean_to_key
+from .names import BEDROCK_MODEL_ID, MAX_GROQ_CALLS, clean_to_key
 from .parsers import (
     asher,
     astor,
@@ -71,8 +71,8 @@ from .s3upload import (
 DEFAULT_OUT = "hunt-report.json"
 DEFAULT_STATE = "hunt-state.json"
 DEFAULT_NAME_CACHE = "name-cache.json"
-MAX_OVERSEAS_QUERIES = 150
-MAX_LLM_CALLS = 500
+MAX_OVERSEAS_QUERIES = 200
+MAX_LLM_CALLS = 2000
 MAX_NAME_CACHE_ENTRIES = 5000
 # One overseas search per retailer per term gets at most this long.
 # Slice 10 stalled 68 minutes in the 26-50 batch: a throttled
@@ -110,10 +110,13 @@ def parse_args(argv):
     parser.add_argument("--max-overseas-queries", type=int,
                         default=MAX_OVERSEAS_QUERIES,
                         help="distinct overseas search terms per run")
-    parser.add_argument("--max-llm-calls", "--max-groq-calls", type=int,
-                        default=MAX_LLM_CALLS, dest="max_llm_calls",
+    parser.add_argument("--max-llm-calls", type=int,
+                        default=MAX_LLM_CALLS,
                         help="LLM name-cleaning calls per run (Bedrock, "
                              "Groq fallback)")
+    parser.add_argument("--max-groq-calls", type=int,
+                        default=MAX_GROQ_CALLS,
+                        help="Groq fallback calls per run (free-tier cap)")
     args = parser.parse_args(argv)
     assert args.out.endswith(".json"), "--out must end in .json"
     assert args.state.endswith(".json"), "--state must end in .json"
@@ -123,7 +126,9 @@ def parse_args(argv):
     assert args.paneco_url is None or args.paneco_url.startswith("http")
     assert 1 <= args.max_overseas_queries <= 200, (
         "--max-overseas-queries out of bounds")
-    assert 0 <= args.max_llm_calls <= 500, "--max-llm-calls out of bounds"
+    assert 0 <= args.max_llm_calls <= 2000, "--max-llm-calls out of bounds"
+    assert 0 <= args.max_groq_calls <= MAX_GROQ_CALLS, (
+        "--max-groq-calls out of bounds")
     return args
 
 
@@ -266,6 +271,26 @@ async def _search_bounded(coro, retailer,
     return found, entry, False
 
 
+def _order_terms(terms):
+    """Overseas search terms, most expensive bottle first.
+
+    Rare expensive bottles (Baccarat, Wildmoor 40) have few listings
+    and were never searched under the old most-listed-first order;
+    price-first puts them in the term budget. Ties break by listing
+    count, then alphabetically. Returns the ordered term list.
+    """
+    assert isinstance(terms, dict), "terms must be a dict"
+    term_max_price = {
+        term: max(item.price_sgd for item in items)
+        for term, items in terms.items()}
+    assert len(term_max_price) == len(terms), "one max price per term"
+    ordered = sorted(
+        terms, key=lambda term: (-term_max_price[term],
+                                 -len(terms[term]), term))
+    assert len(ordered) == len(terms), "ordering must not drop terms"
+    return ordered
+
+
 def _record_timeout(retailer, timed_out, timeouts, skipped,
                     limit=MAX_RETAILER_TIMEOUTS):
     """Record one search timeout. Returns True when the retailer
@@ -284,29 +309,35 @@ def _record_timeout(retailer, timed_out, timeouts, skipped,
     return False
 
 
-def match_overseas(listing, prices, llm_cache, llm_budget):
+def match_overseas(listing, prices, llm_cache, llm_budget,
+                   groq_budget=MAX_GROQ_CALLS):
     """Overseas prices for one SG listing: exact canonical match
     first; LLM cleaning (Bedrock, Groq fallback) only when no exact
-    match exists and budget remains. Returns (matched, llm_calls_used).
-    An LLM failure (None) leaves the listing unmatched — never a
-    guessed match."""
+    match exists and budget remains. Returns (matched, llm_calls_used,
+    groq_calls_used). An LLM failure (None) leaves the listing
+    unmatched — never a guessed match. The Groq fallback is capped
+    separately: once groq_budget is spent, only Bedrock is tried."""
     assert listing.price_sgd > 0, "listing price must be positive"
     assert isinstance(prices, list)
     assert isinstance(llm_cache, dict)
     assert llm_budget >= 0, "LLM budget must be non-negative"
+    assert groq_budget >= 0, "Groq budget must be non-negative"
     exact = _match_exact(prices, listing.canonical)
     if exact:
-        return exact, 0
+        return exact, 0, 0
     if llm_budget <= 0 or not prices:
-        return [], 0
+        return [], 0, 0
     calls = 0
+    groq_used = 0
     local_key = llm_cache.get(listing.name)
     if local_key is None:
-        local_key = clean_to_key(listing.name)
+        local_key, used_groq = clean_to_key(
+            listing.name, allow_groq=(groq_used < groq_budget))
         llm_cache[listing.name] = local_key
         calls += 1
+        groq_used += 1 if used_groq else 0
     if local_key is None:
-        return [], calls
+        return [], calls, groq_used
     matched = []
     for price in prices:
         if not price.in_stock:
@@ -315,13 +346,16 @@ def match_overseas(listing, prices, llm_cache, llm_budget):
         if overseas_key is None:
             if calls >= llm_budget:
                 break
-            overseas_key = clean_to_key(price.name)
+            overseas_key, used_groq = clean_to_key(
+                price.name, allow_groq=(groq_used < groq_budget))
             llm_cache[price.name] = overseas_key
             calls += 1
+            groq_used += 1 if used_groq else 0
         if overseas_key is not None and overseas_key == local_key:
             matched.append(price)
     assert calls <= llm_budget, "LLM budget exceeded"
-    return matched, calls
+    assert groq_used <= groq_budget, "Groq budget exceeded"
+    return matched, calls, groq_used
 
 
 def _error_health(retailer, exc):
@@ -403,14 +437,16 @@ def prune_name_cache(cache):
 
 async def run_once(fx, max_pages, paneco_url=None,
                    max_overseas_queries=MAX_OVERSEAS_QUERIES,
-                   max_llm_calls=MAX_LLM_CALLS, name_cache=None):
+                   max_llm_calls=MAX_LLM_CALLS,
+                   max_groq_calls=MAX_GROQ_CALLS, name_cache=None):
     """Run the full hunt. Returns (listings, health, comparisons,
     notes). name_cache is a dict the run reads and updates in place
     (raw name -> canonical key); pass None for a fresh empty cache."""
     assert fx is not None, "FX rates required"
     assert 1 <= max_pages <= MAX_PAGES, "max_pages out of bounds"
     assert 1 <= max_overseas_queries <= 200, "query cap out of bounds"
-    assert 0 <= max_llm_calls <= 500, "LLM cap out of bounds"
+    assert 0 <= max_llm_calls <= 2000, "LLM cap out of bounds"
+    assert 0 <= max_groq_calls <= MAX_GROQ_CALLS, "Groq cap out of bounds"
     assert paneco_url is None or paneco_url.startswith("http")
     assert name_cache is None or isinstance(name_cache, dict), (
         "name_cache must be a dict or None")
@@ -461,8 +497,7 @@ async def run_once(fx, max_pages, paneco_url=None,
         terms = {}
         for item in candidates:
             terms.setdefault(search_term(item.canonical), []).append(item)
-        ordered_terms = sorted(
-            terms, key=lambda term: (-len(terms[term]), term))
+        ordered_terms = _order_terms(terms)
         chosen = ordered_terms[:max_overseas_queries]
         skipped_terms = len(ordered_terms) - len(chosen)
         assert len(ordered_terms) >= len(chosen), "term cap must not grow"
@@ -578,16 +613,19 @@ async def run_once(fx, max_pages, paneco_url=None,
     print("Starting comparisons: name-cleaning via Bedrock %s"
           % BEDROCK_MODEL_ID, flush=True)
     llm_used = 0
+    groq_used = 0
     comparisons = []
     for item in listings:
         overseas = []
         if (item.in_stock and item.price_sgd >= MIN_HUNT_PRICE_SGD
                 and item.size_ml is not None and item.size_verified):
             term = search_term(item.canonical)
-            overseas, used = match_overseas(
+            overseas, used, used_groq = match_overseas(
                 item, prices_by_term.get(term, []), llm_cache,
-                max_llm_calls - llm_used)
+                max_llm_calls - llm_used,
+                max_groq_calls - groq_used)
             llm_used += used
+            groq_used += used_groq
         result = compare(item, overseas, fx, codes=(), as_of=as_of)
         comparisons.append({
             "retailer": item.retailer,
@@ -611,6 +649,9 @@ async def run_once(fx, max_pages, paneco_url=None,
     if llm_used >= max_llm_calls and max_llm_calls > 0:
         notes.append("LLM call budget (%d) exhausted; later ambiguous "
                      "matches stayed exact-only." % max_llm_calls)
+    if groq_used >= max_groq_calls and max_groq_calls > 0:
+        notes.append("Groq fallback budget (%d) exhausted; later "
+                     "Bedrock failures stayed unmatched." % max_groq_calls)
     notes.append("Promo codes are not applied in this slice; effective "
                  "price is the shelf price.")
     assert len(comparisons) == len(listings), (
@@ -663,7 +704,7 @@ def main(argv=None):
     listings, health, comparisons, notes = asyncio.run(
         run_once(fx, args.max_pages, args.paneco_url,
                  args.max_overseas_queries, args.max_llm_calls,
-                 name_cache=name_cache))
+                 args.max_groq_calls, name_cache=name_cache))
     state = build_state(listings)
     previous = load_state(args.state) or {}
     diff = diff_states(previous, state)

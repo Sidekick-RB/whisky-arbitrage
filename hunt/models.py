@@ -60,6 +60,7 @@ def canonical_from_name(name):
     text = name.strip().lower()
     if text.startswith("the "):
         text = text[4:]
+    text = re.sub(r"(\d+)\s*yr\b", r"\1yr", text)
     text = re.sub(r"(\d+)\s*year\s*old", r"\1yr", text)
     text = re.sub(r"(\d+)\s*years?\b", r"\1yr", text)
     text = re.sub(r"\b\d+(\.\d+)?\s?(ml|l|cl)\b", " ", text)

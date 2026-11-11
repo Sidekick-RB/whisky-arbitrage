@@ -96,6 +96,14 @@ class CanonicalFromNameTest(unittest.TestCase):
         assert key == "redbreast-21yr"
         self.assertEqual(key, "redbreast-21yr")
 
+    def test_yr_abbreviation_normalised(self):
+        # Astor names carry "18 Yr." — without this the key would be
+        # "glenfiddich-18-yr" and never exactly match the SG key.
+        key = canonical_from_name(
+            "Glenfiddich 18 Yr. Single Malt Scotch Whisky")
+        assert key == "glenfiddich-18yr"
+        self.assertEqual(key, "glenfiddich-18yr")
+
     def test_bare_whisky_dropped(self):
         key = canonical_from_name(
             "Glenmorangie 25 Years Single Malt Whisky 750ml")

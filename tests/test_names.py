@@ -202,7 +202,7 @@ class CleanNameStubTest(unittest.TestCase):
     def test_clean_to_key_via_stub(self):
         server, thread, url = _run_stub()
         try:
-            key = clean_to_key("Royal Brackla 18 Palo Cortado",
+            key, used_groq = clean_to_key("Royal Brackla 18 Palo Cortado",
                                api_key="test-key", base_url=url)
             assert key == ("royal-brackla-18yr-"
                            "palo-cortado-sherry-cask-finish")
@@ -215,7 +215,7 @@ class CleanNameStubTest(unittest.TestCase):
         if "GROQ_API_KEY" in os.environ:
             self.skipTest("GROQ_API_KEY is set in this environment")
         assert clean_name("Royal Brackla 18") is None
-        assert clean_to_key("Royal Brackla 18") is None
+        assert clean_to_key("Royal Brackla 18") == (None, True)
         self.assertIsNone(clean_name("Royal Brackla 18"))
 
 
@@ -326,13 +326,14 @@ class BedrockTest(unittest.TestCase):
         names.clean_name_bedrock = (
             lambda name, **kw: clean_name_bedrock(name, client=client))
         try:
-            key = clean_to_key("Royal Brackla 18 Palo Cortado",
+            key, used_groq = clean_to_key("Royal Brackla 18 Palo Cortado",
                                api_key="unused",
                                base_url="http://127.0.0.1:1")
         finally:
             names.clean_name_bedrock = saved
         assert key == ("royal-brackla-18yr-"
                        "palo-cortado-sherry-cask-finish")
+        assert used_groq is False, "Bedrock success must not use Groq"
         self.assertEqual(
             key, "royal-brackla-18yr-palo-cortado-sherry-cask-finish")
 
@@ -341,15 +342,32 @@ class BedrockTest(unittest.TestCase):
         names.clean_name_bedrock = lambda name, **kw: None
         server, thread, url = _run_stub()
         try:
-            key = clean_to_key("Royal Brackla 18 Palo Cortado",
+            key, used_groq = clean_to_key("Royal Brackla 18 Palo Cortado",
                                api_key="test-key", base_url=url)
         finally:
             names.clean_name_bedrock = saved
             _stop_stub(server, thread)
         assert key == ("royal-brackla-18yr-"
                        "palo-cortado-sherry-cask-finish")
+        assert used_groq is True, "Bedrock failure must use the Groq fallback"
         self.assertEqual(
             key, "royal-brackla-18yr-palo-cortado-sherry-cask-finish")
+
+    def test_clean_to_key_allow_groq_false_skips_groq(self):
+        # Bedrock fails and Groq is disallowed: no Groq call happens
+        # even though the base URL is a dead port that would fail.
+        saved = names.clean_name_bedrock
+        names.clean_name_bedrock = lambda name, **kw: None
+        try:
+            key, used_groq = clean_to_key(
+                "Royal Brackla 18 Palo Cortado",
+                api_key="unused", base_url="http://127.0.0.1:1",
+                allow_groq=False)
+        finally:
+            names.clean_name_bedrock = saved
+        assert key is None
+        assert used_groq is False, "Groq must not be attempted"
+        self.assertIsNone(key)
 
 
 class FirstFailureLoggingTest(unittest.TestCase):

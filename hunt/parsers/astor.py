@@ -2,15 +2,17 @@
 
 Source: https://www.astorwines.com — Spirits search is a plain
 server-rendered GET:
-  /SpiritsSearchResult.aspx?p=<page>&search=Advanced
-      &searchtype=Contains&term=<query>&cat=2
-Verified by live curl fetch 10 Nov 2026: 12 `item-teaser` cards on
+  /SpiritsSearchResult.aspx?search=Advanced
+      &searchtype=Contains&term=<query>&cat=2&p=1&Page=<page>
+Astor paginates on `Page=` (capital P); the `p` parameter stays 1.
+Verified by live curl fetch 11 Nov 2026: 12 `item-teaser` cards on
 page 1 inside #search-results. Per card: the name is the
 `<a class="item-name">` text (strip trailing spaces/dots — the
 display truncates with "..."); the selling price is the
 `<span class="price-value price-bottle display-2">$149.99</span>`
 (the empty `price-old` span and the `price-case` span are not the
-bottle price); the size is the gtag variant `'(750)'` (millilitres);
+bottle price); the size is the gtag variant — `'(750)'` (millilitres),
+`'(1.75)'` / `'(1.5)'` (litres), or `'(LTR)'` (1000 ml);
 stock is the absence of an `out-of-stock-container` div (an
 out-of-stock card has an empty price container and the text "This
 item is currently out of stock"). Product links are relative
@@ -50,8 +52,25 @@ _NAME_RE = re.compile(
     r'<a[^>]*class="item-name"[^>]*href="([^"]+)"[^>]*>([^<]+)</a>', re.S)
 _PRICE_RE = re.compile(
     r'price-value price-bottle display-2">\s*\$([\d,]+(?:\.\d{2})?)', re.S)
-_VARIANT_RE = re.compile(r"variant: '\((\d+)\)'")
+_VARIANT_RE = re.compile(r"variant: '\(([^)]+)\)'")
 _OUT_OF_STOCK = "out-of-stock-container"
+
+
+def _variant_to_ml(value):
+    """Astor gtag size variant to millilitres.
+
+    '750' -> 750 (millilitres), '1.75' -> 1750 (litres),
+    'LTR' -> 1000. Returns None when the variant is unknown.
+    """
+    assert isinstance(value, str) and value, "variant required"
+    if value == "LTR":
+        return 1000
+    if "." in value:
+        size = parse_size_ml(value + "L")
+    else:
+        size = parse_size_ml(value + "ml")
+    assert size is None or size > 0, "size must be positive"
+    return size
 
 
 def search_url(query, page_no=1):
@@ -59,7 +78,7 @@ def search_url(query, page_no=1):
     assert isinstance(query, str) and query.strip(), "query required"
     assert page_no >= 1, "page number must be >= 1"
     url = (BASE_URL + SEARCH_PATH + "&term=" + quote_plus(query.strip())
-           + "&p=%d" % page_no)
+           + "&p=1&Page=%d" % page_no)
     assert url.startswith(BASE_URL), "search URL must stay on Astor"
     return url
 
@@ -108,7 +127,7 @@ def parse_search_html(html, page_url, seen_at):
         size_match = _VARIANT_RE.search(plain)
         if size_match is None:
             continue
-        size_ml = parse_size_ml(size_match.group(1) + "ml")
+        size_ml = _variant_to_ml(size_match.group(1))
         if size_ml is None:
             continue
         in_stock = _OUT_OF_STOCK not in chunk

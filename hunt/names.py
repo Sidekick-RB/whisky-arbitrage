@@ -313,25 +313,36 @@ def clean_name(name, api_key=None, base_url=API_BASE):
     return cleaned
 
 
-def clean_to_key(name, api_key=None, base_url=API_BASE):
+MAX_GROQ_CALLS = 150
+"""Groq fallback budget per run: the free tier allows ~200K tokens/day,
+about 150 calls at ~1,200 tokens each. Bedrock is the primary cleaner;
+Groq is only a fallback, so its calls are capped separately from the
+overall LLM budget."""
+
+
+def clean_to_key(name, api_key=None, base_url=API_BASE,
+                 allow_groq=True):
     """Clean one retail name into a canonical match key, or None.
 
-    Bedrock first, Groq fallback. Returns the
-    models.canonical_key() string, or None when the name could not
-    be cleaned (no key, failed calls, invalid answers).
+    Bedrock first, Groq fallback (only when allow_groq is True).
+    Returns (key, used_groq): the models.canonical_key() string or
+    None when the name could not be cleaned, and whether the Groq
+    fallback was attempted.
     """
     assert isinstance(name, str) and name.strip(), "name required"
     assert isinstance(base_url, str) and base_url.startswith("http")
     from .models import canonical_key
 
     cleaned = clean_name_bedrock(name)
-    if cleaned is None:
+    used_groq = False
+    if cleaned is None and allow_groq:
         cleaned = clean_name(name, api_key=api_key, base_url=base_url)
+        used_groq = True
     if cleaned is None:
-        return None
+        return None, used_groq
     key = canonical_key(
         cleaned["distillery"], cleaned["age_years"],
         cleaned["edition"], cleaned["is_willet_rye"])
     assert key, "canonical key must be non-empty"
     assert isinstance(key, str), "canonical key must be a string"
-    return key
+    return key, used_groq
