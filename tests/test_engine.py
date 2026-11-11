@@ -315,6 +315,36 @@ class WilletTest(unittest.TestCase):
         self.assertIn(note, result.notes)
 
 
+class RoundingBoundaryTest(unittest.TestCase):
+    def test_saving_just_under_qualifier_bar_does_not_crash(self):
+        """Slice 13 crashed (AssertionError, run.py:591) on a saving
+        of ~24.96%: the verdict was decided on the unrounded saving
+        ("close-find") but the stored value was round(24.96, 1) =
+        25.0, which the close-find band rejects. The verdict must be
+        decided on the rounded saving, so it agrees with the stored
+        value: 24.96% rounds to 25.0% and is a qualifier."""
+        local = make_listing(959.76, size_ml=1000)
+        overseas = [make_overseas("Astor Wines", "US", "USD", 1000.0,
+                                  1000)]
+        result = compare(local, overseas, FX_2NOV, as_of="2026-11-02")
+        assert result.verdict == "qualifier"
+        assert result.saving_pct == 25.0
+        self.assertEqual(result.verdict, "qualifier")
+        self.assertEqual(result.saving_pct, 25.0)
+
+    def test_saving_just_under_close_find_floor_is_a_close_find(self):
+        """Same boundary at the floor: a 14.96% saving rounds to
+        15.0% and is a close find, not a not-a-deal displaying 15.0%."""
+        local = make_listing(1087.66, size_ml=1000)
+        overseas = [make_overseas("Astor Wines", "US", "USD", 1000.0,
+                                  1000)]
+        result = compare(local, overseas, FX_2NOV, as_of="2026-11-02")
+        assert result.verdict == "close-find"
+        assert result.saving_pct == 15.0
+        self.assertEqual(result.verdict, "close-find")
+        self.assertEqual(result.saving_pct, 15.0)
+
+
 class DearLocalTest(unittest.TestCase):
     """Regression: the 01:38 IST 10 Nov 2026 run crashed on a local bottle
     more than twice as dear per litre as the overseas benchmark. A saving

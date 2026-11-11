@@ -203,12 +203,20 @@ def compare(local, overseas, fx, codes=(), as_of="", is_new_user=False,
     local_pl = per_litre(local.price_sgd, local.size_ml)
     assert local_pl is not None and local_pl > 0
     assert saving is not None and best_per_litre is not None
-    if saving >= QUALIFIER_BAR_PCT:
+    # Round BEFORE deciding the verdict: the verdict and the stored
+    # saving_pct must agree, because Comparison.__post_init__ asserts
+    # the stored value lies in its verdict's band. Deciding on the
+    # unrounded saving crashed slice 13 (a 24.96% saving decided
+    # "close-find" but stored round(24.96, 1) = 25.0, which the
+    # close-find band rejects) and killed the run before any report
+    # was written.
+    saving_r = round(saving, 1)
+    if saving_r >= QUALIFIER_BAR_PCT:
         verdict = "qualifier"
-    elif saving >= CLOSE_FIND_FLOOR_PCT:
+    elif saving_r >= CLOSE_FIND_FLOOR_PCT:
         verdict = "close-find"
     else:
         verdict = "not-a-deal"
-    return _result(verdict, local, round(saving, 1), round(local_pl, 2),
+    return _result(verdict, local, saving_r, round(local_pl, 2),
                    best, round(best_per_litre, 2), effective,
                    applied_code, notes)
