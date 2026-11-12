@@ -19,6 +19,7 @@ from hunt.parsers.twe import parse_search_html as twe_parse
 from hunt.report import ParserHealth
 from hunt.run import (
     MAX_NAME_CACHE_ENTRIES,
+    MAX_OVERSEAS_QUERIES,
     _choose_terms,
     _order_terms,
     _order_terms_by_count,
@@ -29,6 +30,7 @@ from hunt.run import (
     aggregate_health,
     dedupe_listings,
     match_overseas,
+    parse_args,
     prune_name_cache,
     search_term,
 )
@@ -192,15 +194,28 @@ class SearchBoundedTest(unittest.TestCase):
 
 
 class RecordTimeoutTest(unittest.TestCase):
-    def test_two_timeouts_skip_the_retailer(self):
+    def test_five_timeouts_skip_the_retailer(self):
+        """The limit is 5 since slice 18 (was 2): at 1000 terms a
+        retailer doing ~1000 searches hits transient timeouts, so
+        two no longer mean throttled."""
+        timeouts = {}
+        skipped = set()
+        for _ in range(4):
+            assert _record_timeout("Astor Wines", True, timeouts,
+                                   skipped) is False
+        assert _record_timeout("Astor Wines", True, timeouts,
+                               skipped) is True
+        assert "Astor Wines" in skipped
+        self.assertIn("Astor Wines", skipped)
+
+    def test_two_timeouts_do_not_skip(self):
         timeouts = {}
         skipped = set()
         assert _record_timeout("Astor Wines", True, timeouts,
                                skipped) is False
         assert _record_timeout("Astor Wines", True, timeouts,
-                               skipped) is True
-        assert "Astor Wines" in skipped
-        self.assertIn("Astor Wines", skipped)
+                               skipped) is False
+        assert skipped == set()
 
     def test_no_timeout_records_nothing(self):
         timeouts = {}
@@ -209,6 +224,35 @@ class RecordTimeoutTest(unittest.TestCase):
                                skipped) is False
         assert timeouts == {} and skipped == set()
         self.assertEqual(timeouts, {})
+
+
+class OverseasCapTest(unittest.TestCase):
+    """Slice 18 (Marcel, 12 Nov 2026): the overseas term cap is 1000,
+    up from 200 — 200 covered only ~11% of candidate terms, 1000
+    covers ~55%."""
+
+    def test_default_cap_is_1000(self):
+        self.assertEqual(MAX_OVERSEAS_QUERIES, 1000)
+        self.assertEqual(parse_args([]).max_overseas_queries, 1000)
+
+    def test_cap_1000_accepted(self):
+        args = parse_args(["--max-overseas-queries", "1000"])
+        self.assertEqual(args.max_overseas_queries, 1000)
+
+    def test_cap_1001_rejected(self):
+        with self.assertRaises(AssertionError):
+            parse_args(["--max-overseas-queries", "1001"])
+
+    def test_choose_terms_fills_1000(self):
+        """The hybrid chooser must actually fill a 1000-term budget."""
+        terms = {}
+        for num in range(1200):
+            terms["term-%04d" % num] = [_listing(
+                "Bottle %04d 70cl" % num, "bottle-%04d" % num,
+                price=100.0 + num)]
+        chosen = _choose_terms(terms, 1000)
+        self.assertEqual(len(chosen), 1000)
+        self.assertEqual(len(set(chosen)), 1000)
 
 
 class MatchOverseasTest(unittest.TestCase):

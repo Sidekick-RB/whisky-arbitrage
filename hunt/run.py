@@ -78,7 +78,7 @@ from .s3upload import (
 DEFAULT_OUT = "hunt-report.json"
 DEFAULT_STATE = "hunt-state.json"
 DEFAULT_NAME_CACHE = "name-cache.json"
-MAX_OVERSEAS_QUERIES = 200
+MAX_OVERSEAS_QUERIES = 1000
 MAX_LLM_CALLS = 2000
 MAX_NAME_CACHE_ENTRIES = 5000
 # One overseas search per retailer per term gets at most this long.
@@ -86,8 +86,11 @@ MAX_NAME_CACHE_ENTRIES = 5000
 # search has no internal bound that fires, so the run needs one.
 OVERSEAS_RETAILER_TIMEOUT_S = 120
 # Timeouts before a retailer is skipped for the rest of the run.
-MAX_RETAILER_TIMEOUTS = 2
-# Progress lines in the 150-term overseas loop. Slice 6 went ~63
+# Raised 2 -> 5 with the 1000-term cap (Marcel, 12 Nov 2026): at
+# five times the searches, two transient timeouts no longer mean
+# throttled. Five still bounds a truly dead retailer (5 x 120s).
+MAX_RETAILER_TIMEOUTS = 5
+# Progress lines in the 1000-term overseas loop. Slice 6 went ~63
 # silent minutes at every-25; every-5 shows a stall within one
 # batch instead of after it.
 OVERSEAS_PROGRESS_EVERY = 5
@@ -131,7 +134,7 @@ def parse_args(argv):
         "--name-cache must end in .json")
     assert 1 <= args.max_pages <= MAX_PAGES, "--max-pages out of bounds"
     assert args.paneco_url is None or args.paneco_url.startswith("http")
-    assert 1 <= args.max_overseas_queries <= 200, (
+    assert 1 <= args.max_overseas_queries <= MAX_OVERSEAS_QUERIES, (
         "--max-overseas-queries out of bounds")
     assert 0 <= args.max_llm_calls <= 2000, "--max-llm-calls out of bounds"
     assert 0 <= args.max_groq_calls <= MAX_GROQ_CALLS, (
@@ -352,7 +355,7 @@ def _choose_terms(terms, max_terms):
 def _record_timeout(retailer, timed_out, timeouts, skipped,
                     limit=MAX_RETAILER_TIMEOUTS):
     """Record one search timeout. Returns True when the retailer
-    should be skipped for the rest of the run: two timeouts mean
+    should be skipped for the rest of the run: five timeouts mean
     throttled, not unlucky. The skipped set is mutated in place.
     """
     assert retailer, "retailer required"
@@ -502,7 +505,8 @@ async def run_once(fx, max_pages, paneco_url=None,
     (raw name -> canonical key); pass None for a fresh empty cache."""
     assert fx is not None, "FX rates required"
     assert 1 <= max_pages <= MAX_PAGES, "max_pages out of bounds"
-    assert 1 <= max_overseas_queries <= 200, "query cap out of bounds"
+    assert 1 <= max_overseas_queries <= MAX_OVERSEAS_QUERIES, (
+        "query cap out of bounds")
     assert 0 <= max_llm_calls <= 2000, "LLM cap out of bounds"
     assert 0 <= max_groq_calls <= MAX_GROQ_CALLS, "Groq cap out of bounds"
     assert paneco_url is None or paneco_url.startswith("http")
