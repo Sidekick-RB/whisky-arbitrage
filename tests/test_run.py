@@ -19,7 +19,9 @@ from hunt.parsers.twe import parse_search_html as twe_parse
 from hunt.report import ParserHealth
 from hunt.run import (
     MAX_NAME_CACHE_ENTRIES,
+    _choose_terms,
     _order_terms,
+    _order_terms_by_count,
     _record_timeout,
     _scrape_sg_urllib,
     _search_bounded,
@@ -322,6 +324,83 @@ class OrderTermsTest(unittest.TestCase):
         ordered = _order_terms(terms)
         assert ordered == ["a bottle", "b bottle", "c bottle"]
         self.assertEqual(ordered, ["a bottle", "b bottle", "c bottle"])
+
+
+class OrderTermsByCountTest(unittest.TestCase):
+    def test_most_listed_first(self):
+        terms = {
+            "a bottle": [_listing("A 70cl", "a", price=100.0)],
+            "b bottle": [_listing("B 70cl", "b", price=100.0),
+                         _listing("B 70cl", "b", price=100.0),
+                         _listing("B 70cl", "b", price=100.0)],
+            "c bottle": [_listing("C 70cl", "c", price=500.0),
+                         _listing("C 70cl", "c", price=500.0)],
+        }
+        ordered = _order_terms_by_count(terms)
+        assert ordered == ["b bottle", "c bottle", "a bottle"]
+        self.assertEqual(ordered[0], "b bottle")
+
+    def test_ties_break_by_price_then_name(self):
+        terms = {
+            "d bottle": [_listing("D 70cl", "d", price=100.0),
+                         _listing("D 70cl", "d", price=100.0)],
+            "c bottle": [_listing("C 70cl", "c", price=500.0),
+                         _listing("C 70cl", "c", price=500.0)],
+            "e bottle": [_listing("E 70cl", "e", price=100.0),
+                         _listing("E 70cl", "e", price=100.0)],
+        }
+        ordered = _order_terms_by_count(terms)
+        assert ordered == ["c bottle", "d bottle", "e bottle"]
+        self.assertEqual(ordered, ["c bottle", "d bottle", "e bottle"])
+
+
+class ChooseTermsTest(unittest.TestCase):
+    def test_hybrid_mixes_price_and_count(self):
+        terms = {
+            "rare": [_listing("Rare 70cl", "rare", price=1500.0)],
+            "mid": [_listing("Mid 70cl", "mid", price=300.0)],
+            "common": [_listing("Common 70cl", "common", price=120.0)
+                       for _ in range(5)],
+            "popular": [_listing("Popular 70cl", "popular", price=110.0)
+                        for _ in range(4)],
+            "cheap": [_listing("Cheap 70cl", "cheap", price=100.0)],
+        }
+        chosen = _choose_terms(terms, 4)
+        assert chosen == ["rare", "mid", "common", "popular"]
+        self.assertEqual(chosen, ["rare", "mid", "common", "popular"])
+
+    def test_overlap_deduped_and_budget_filled(self):
+        terms = {
+            "star": [_listing("Star 70cl", "star", price=1500.0)
+                     for _ in range(3)],
+            "rare": [_listing("Rare 70cl", "rare", price=900.0)],
+            "common": [_listing("Common 70cl", "common", price=120.0),
+                       _listing("Common 70cl", "common", price=120.0)],
+            "mid": [_listing("Mid 70cl", "mid", price=300.0)],
+            "cheap": [_listing("Cheap 70cl", "cheap", price=100.0)],
+        }
+        chosen = _choose_terms(terms, 4)
+        assert chosen == ["star", "rare", "common", "mid"]
+        self.assertEqual(len(chosen), len(set(chosen)))
+
+    def test_small_input_returns_everything(self):
+        terms = {
+            "a": [_listing("A 70cl", "a", price=200.0)],
+            "b": [_listing("B 70cl", "b", price=100.0)],
+            "c": [_listing("C 70cl", "c", price=300.0)],
+        }
+        chosen = _choose_terms(terms, 200)
+        assert sorted(chosen) == ["a", "b", "c"]
+        self.assertEqual(len(chosen), 3)
+
+    def test_cap_respected_and_terms_kept(self):
+        terms = {"t%d" % i: [_listing("T 70cl", "t%d" % i,
+                                       price=100.0 + i)]
+                 for i in range(6)}
+        chosen = _choose_terms(terms, 4)
+        assert len(chosen) == 4
+        assert all(term in terms for term in chosen)
+        self.assertEqual(len(set(chosen)), 4)
 
 
 class PruneCacheTest(unittest.TestCase):

@@ -297,6 +297,57 @@ def _order_terms(terms):
     return ordered
 
 
+def _order_terms_by_count(terms):
+    """Overseas search terms, most-listed bottle first.
+
+    Cheap popular bottles (Glenfiddich 18, JW Blue) have many listings
+    and were never searched under price-only ordering; count-first
+    puts them in the term budget. Ties break by max price, then
+    alphabetically. Returns the ordered term list.
+    """
+    assert isinstance(terms, dict), "terms must be a dict"
+    term_max_price = {
+        term: max(item.price_sgd for item in items)
+        for term, items in terms.items()}
+    assert len(term_max_price) == len(terms), "one max price per term"
+    ordered = sorted(
+        terms, key=lambda term: (-len(terms[term]),
+                                 -term_max_price[term], term))
+    assert len(ordered) == len(terms), "ordering must not drop terms"
+    return ordered
+
+
+def _choose_terms(terms, max_terms):
+    """Hybrid term budget: half by price, half by listing count.
+
+    The slice-15 validation run showed price-only ordering squeezes
+    out cheap popular bottles (their terms rank ~800-1500th and are
+    never searched), while count-only ordering never reaches rare
+    expensive bottles. Half the budget goes to each order, deduped,
+    and any leftover budget is filled in price order. Returns at most
+    max_terms distinct terms.
+    """
+    assert isinstance(terms, dict), "terms must be a dict"
+    assert max_terms >= 1, "term budget must be at least 1"
+    half = max_terms // 2
+    chosen = []
+    for term in _order_terms(terms)[:half]:
+        if term not in chosen:
+            chosen.append(term)
+    for term in _order_terms_by_count(terms)[:half]:
+        if term not in chosen:
+            chosen.append(term)
+    for term in _order_terms(terms):
+        if len(chosen) >= max_terms:
+            break
+        if term not in chosen:
+            chosen.append(term)
+    assert len(chosen) == min(max_terms, len(terms)), (
+        "hybrid choice must fill the budget")
+    assert len(set(chosen)) == len(chosen), "chosen terms must be distinct"
+    return chosen
+
+
 def _record_timeout(retailer, timed_out, timeouts, skipped,
                     limit=MAX_RETAILER_TIMEOUTS):
     """Record one search timeout. Returns True when the retailer
@@ -503,10 +554,9 @@ async def run_once(fx, max_pages, paneco_url=None,
         terms = {}
         for item in candidates:
             terms.setdefault(search_term(item.canonical), []).append(item)
-        ordered_terms = _order_terms(terms)
-        chosen = ordered_terms[:max_overseas_queries]
-        skipped_terms = len(ordered_terms) - len(chosen)
-        assert len(ordered_terms) >= len(chosen), "term cap must not grow"
+        chosen = _choose_terms(terms, max_overseas_queries)
+        skipped_terms = len(terms) - len(chosen)
+        assert len(terms) >= len(chosen), "term cap must not grow"
         assert len(candidates) >= 0, "candidate count must be sane"
         print("Overseas: %d terms, %d candidates"
               % (len(chosen), len(candidates)), flush=True)
