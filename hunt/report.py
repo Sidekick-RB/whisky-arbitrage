@@ -6,6 +6,7 @@ Report schema (version 1):
   price_changes [{key, retailer, canonical, old_price, new_price}],
   stock_changes [{key, retailer, canonical, was_in_stock, in_stock}],
   delistings [{key, retailer, canonical, last_price_sgd, last_seen}],
+  excluded_by_rule [{key, retailer, canonical, last_price_sgd, last_seen}],
   new_listings [{key, retailer, canonical, price_sgd}],
   parser_health [{retailer, pages_scanned, items_found, status, detail}],
   notes [str]
@@ -110,32 +111,45 @@ def _changes_for_key(key, prev, curr):
     return price_change, stock_change
 
 
-def diff_states(previous, current):
+def diff_states(previous, current, is_excluded=None):
     """Diff two state dicts. Returns price/stock changes, delistings, news.
 
     previous/current map listing_key -> serialized listing dict with at
     least price_sgd, in_stock and seen_at. Keys present before but absent
-    now are delistings (e.g. Glenfarclas 21, 9 Nov 2026).
+    now are delistings (e.g. Glenfarclas 21, 9 Nov 2026), UNLESS
+    is_excluded is given and returns True for that canonical: those go
+    into a separate "excluded_by_rule" section, so a filter change does
+    not read as a mass delisting. The extra section only appears when
+    is_excluded is passed, so the two-argument call keeps its exact
+    four-section shape.
     """
     assert isinstance(previous, dict), "previous state must be a dict"
     assert isinstance(current, dict), "current state must be a dict"
     assert len(previous) <= MAX_STATE_ENTRIES
     assert len(current) <= MAX_STATE_ENTRIES
+    assert is_excluded is None or callable(is_excluded), (
+        "is_excluded must be a callable or None")
     price_changes = []
     stock_changes = []
     delistings = []
+    excluded_by_rule = []
     new_listings = []
     for key in sorted(previous):
         prev = previous[key]
         assert isinstance(prev, dict), "previous entry must be a dict"
         if key not in current:
-            delistings.append({
+            entry = {
                 "key": key,
                 "retailer": prev.get("retailer", ""),
                 "canonical": prev.get("canonical", ""),
                 "last_price_sgd": prev.get("price_sgd"),
                 "last_seen": prev.get("seen_at", ""),
-            })
+            }
+            if is_excluded is not None and is_excluded(
+                    prev.get("canonical", "")):
+                excluded_by_rule.append(entry)
+            else:
+                delistings.append(entry)
             continue
         curr = current[key]
         assert isinstance(curr, dict), "current entry must be a dict"
@@ -159,7 +173,9 @@ def diff_states(previous, current):
         "delistings": delistings,
         "new_listings": new_listings,
     }
-    assert len(result) == 4, "diff must carry four sections"
+    if is_excluded is not None:
+        result["excluded_by_rule"] = excluded_by_rule
+    assert len(result) in (4, 5), "diff must carry four or five sections"
     return result
 
 
@@ -254,6 +270,7 @@ def build_report(run_id, run_at, fx, comparisons, health, diff, notes,
         "price_changes": diff.get("price_changes", []),
         "stock_changes": diff.get("stock_changes", []),
         "delistings": diff.get("delistings", []),
+        "excluded_by_rule": diff.get("excluded_by_rule", []),
         "new_listings": diff.get("new_listings", []),
         "parser_health": [entry.to_dict() for entry in health],
         "notes": list(notes),

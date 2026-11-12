@@ -28,6 +28,7 @@ from .engine import compare
 from .fx import fetch_rates, fixed_rates
 from .models import MIN_HUNT_PRICE_SGD, canonical_from_name, listing_key
 from .names import BEDROCK_MODEL_ID, MAX_GROQ_CALLS, clean_to_key
+from .scotch import excluded_by_abv_rule
 from .parsers import (
     asher,
     astor,
@@ -546,6 +547,18 @@ async def run_once(fx, max_pages, paneco_url=None,
         if duplicates:
             notes.append("%d duplicate listings dropped" % duplicates)
         listings = unique
+        # --- Scotch <46% ABV filter: drop sub-46% Scotch (under 21yo,
+        # not premium) before any overseas work is spent on it, so the
+        # excluded bottles never reach candidates, terms, or the
+        # per-bottle rollup.
+        kept = [item for item in listings
+                if not excluded_by_abv_rule(item.canonical)]
+        excluded = len(listings) - len(kept)
+        assert excluded >= 0, "excluded count must be sane"
+        if excluded:
+            notes.append("%d listings excluded by the Scotch <46%% ABV "
+                         "rule" % excluded)
+        listings = kept
         candidates = [item for item in listings
                       if item.in_stock
                       and item.price_sgd >= MIN_HUNT_PRICE_SGD
@@ -863,7 +876,7 @@ def main(argv=None):
                  args.max_groq_calls, name_cache=name_cache))
     state = build_state(listings)
     previous = load_state(args.state) or {}
-    diff = diff_states(previous, state)
+    diff = diff_states(previous, state, is_excluded=excluded_by_abv_rule)
     best_prices = best_price_per_bottle(listings, comparisons)
     report = build_report(run_id, run_at, fx, comparisons, health, diff,
                           notes, best_prices=best_prices)
@@ -904,8 +917,10 @@ def main(argv=None):
     print("Best price per bottle: %d bottles" % len(best_prices),
           flush=True)
     print("New: %d  Price changes: %d  Stock changes: %d  Delisted: %d"
+          "  Excluded by ABV rule: %d"
           % (len(diff["new_listings"]), len(diff["price_changes"]),
-             len(diff["stock_changes"]), len(diff["delistings"])),
+             len(diff["stock_changes"]), len(diff["delistings"]),
+             len(diff.get("excluded_by_rule", []))),
           flush=True)
     for entry in health:
         print("  %s: %s (%s)" % (
